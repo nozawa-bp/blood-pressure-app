@@ -1,0 +1,3192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>慢性腎臓病管理アプリ</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#2f6f9f">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1f2937; --sub:#6b7280; --border:#e2e5e9;
+    --sys:#e0505a; --dia:#3a7bd5; --hr:#2fa96b; --accent:#2f6f9f; --accent-dark:#245678;
+    --danger:#d1453b; --warn:#f2a93c; --safe:#2fa96b; --med:#8e44ad;
+    --prot:#16a085; --salt:#e67e22; --potassium:#8e44ad; --energy:#c9971e; --egfr:#1abc9c;
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0; font-family:"Hiragino Sans","Yu Gothic",Meiryo,system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:16px; line-height:1.5;
+    padding-bottom:80px;
+  }
+  header{
+    background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+    color:#fff; padding:18px 16px 14px; position:sticky; top:0; z-index:20;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  header h1{ margin:0; font-size:20px; font-weight:700; }
+  header .sub{ font-size:12px; opacity:.85; margin-top:2px; }
+  .container{ max-width:900px; margin:0 auto; padding:14px; }
+  .tabs{
+    display:flex; gap:4px; overflow-x:auto; padding:10px 12px 0; background:var(--accent-dark);
+  }
+  .tab-btn{
+    flex:0 0 auto; padding:9px 14px; border:none; background:rgba(255,255,255,.12); color:#fff;
+    border-radius:10px 10px 0 0; font-size:14px; cursor:pointer; white-space:nowrap; font-weight:600;
+    opacity:.75;
+  }
+  .tab-btn.active{ background:var(--bg); color:var(--accent-dark); opacity:1; }
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+  .card{
+    background:var(--card); border-radius:14px; padding:16px; margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06); border:1px solid var(--border);
+  }
+  .card h2{ margin:0 0 12px; font-size:16px; color:var(--accent-dark); }
+  .card h3{ margin:0 0 8px; font-size:14px; color:var(--sub); }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .field{ display:flex; flex-direction:column; gap:4px; flex:1 1 100px; min-width:80px; }
+  .field label{ font-size:12px; color:var(--sub); font-weight:600; }
+  input[type=text], input[type=number], input[type=date], input[type=time], select, textarea{
+    padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:15px;
+    background:#fff; color:var(--ink); width:100%; font-family:inherit;
+  }
+  textarea{ resize:vertical; min-height:44px; }
+  button{
+    font-family:inherit; cursor:pointer; border:none; border-radius:8px; font-weight:700;
+    padding:10px 16px; font-size:14px;
+  }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary:hover{ background:var(--accent-dark); }
+  .btn-ghost{ background:#eef1f4; color:var(--ink); }
+  .btn-danger{ background:#fdeceb; color:var(--danger); }
+  .btn-sm{ padding:6px 10px; font-size:12px; border-radius:6px; }
+  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; }
+  .stat{
+    background:#f7f9fb; border-radius:10px; padding:10px 12px; text-align:center; border:1px solid var(--border);
+  }
+  .stat .v{ font-size:20px; font-weight:800; }
+  .stat .l{ font-size:11px; color:var(--sub); margin-top:2px; }
+  .stat.sys .v{ color:var(--sys); }
+  .stat.dia .v{ color:var(--dia); }
+  .stat.hr .v{ color:var(--hr); }
+  .stat.prot .v{ color:var(--prot); }
+  .stat.salt .v{ color:var(--salt); }
+  .stat.potassium .v{ color:var(--potassium); }
+  .stat.energy .v{ color:var(--energy); }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th,td{ padding:7px 6px; border-bottom:1px solid var(--border); text-align:center; }
+  th{ color:var(--sub); font-weight:600; font-size:12px; }
+  td.note{ text-align:left; max-width:200px; white-space:normal; word-break:break-word; font-size:12px; color:#444; }
+  tr.flagged td{ background:#fff4f2; }
+  tr.med-row td{ background:#f8f3fc; }
+  tr.med-row .badge.med{ background:#f3ecfa; color:var(--med); }
+  tr.med-row input[type=time]{ width:100px; padding:5px 4px; font-size:12px; }
+  .rowbtns{ display:flex; gap:4px; justify-content:center; }
+  .date-nav{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .date-nav input[type=date]{ flex:1; }
+  .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+  .badge.ok{ background:#e7f6ee; color:var(--safe); }
+  .badge.high{ background:#fdeceb; color:var(--danger); }
+  .empty{ color:var(--sub); font-size:13px; text-align:center; padding:20px 0; }
+  .med-item{ border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .med-item .name{ font-weight:700; font-size:14px; }
+  .med-item .meta{ font-size:12px; color:var(--sub); margin-top:2px; }
+  .med-check{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .med-check:last-child{ border-bottom:none; }
+  .med-check input[type=checkbox]{ width:20px; height:20px; flex:0 0 auto; }
+  .med-check .mname{ flex:1; font-size:14px; }
+  .med-check input[type=time]{ width:auto; flex:0 0 110px; padding:5px 6px; font-size:13px; }
+  .med-check input[type=time]:disabled{ background:#f4f6f8; color:var(--sub); }
+  .med-batch{ display:flex; align-items:flex-end; gap:10px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--border); flex-wrap:wrap; }
+  .hist-list{ display:flex; flex-direction:column; gap:6px; max-height:480px; overflow-y:auto; }
+  .hist-row{
+    display:flex; justify-content:space-between; align-items:center; padding:9px 12px;
+    border:1px solid var(--border); border-radius:10px; cursor:pointer; background:#fafbfc;
+  }
+  .hist-row:hover{ background:#eef4f9; }
+  .hist-row .d{ font-weight:700; font-size:13px; }
+  .hist-row .m{ font-size:12px; color:var(--sub); }
+  .toolbar{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .legend{ display:flex; gap:14px; flex-wrap:wrap; font-size:12px; margin-top:6px; color:var(--sub); }
+  .legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .legend i{ width:16px; height:3px; display:inline-block; border-radius:2px; }
+  .toast{
+    position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#1f2937; color:#fff;
+    padding:10px 18px; border-radius:999px; font-size:13px; opacity:0; pointer-events:none;
+    transition:opacity .25s; z-index:50;
+  }
+  .toast.show{ opacity:1; }
+  .datalist-hint{ font-size:11px; color:var(--sub); }
+  svg text{ font-family:inherit; }
+  .chart-wrap{ overflow-x:auto; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:520px){ .grid-2{ grid-template-columns:1fr; } }
+  .vitals-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  @media (max-width:680px){ .vitals-grid{ grid-template-columns:1fr; } }
+  .vital-group{ border:1px solid var(--border); border-radius:10px; padding:10px; background:#fafbfc; }
+  .vital-group > label{ font-size:12px; color:var(--sub); font-weight:600; display:block; margin-bottom:6px; }
+  .triple-row{ display:flex; gap:6px; }
+  .triple-row input, .triple-row select{ text-align:center; padding:8px 4px; }
+  .triple-labels{ display:flex; gap:6px; margin-bottom:4px; }
+  .triple-labels span{ flex:1; text-align:center; font-size:11px; color:var(--sub); font-weight:600; }
+  .avg-line{ margin-top:6px; font-size:13px; font-weight:700; text-align:right; color:var(--ink); }
+  .avg-val{ font-size:15px; }
+  .target-line{ margin-top:2px; font-size:12px; text-align:right; color:var(--sub); }
+  .target-line b{ font-weight:700; }
+  .diff-pos{ color:#c0392b; }
+  .diff-neg{ color:#2471a3; }
+  .diff-zero{ color:var(--sub); }
+  .print-opt{ padding:6px 0; }
+  .print-opt label{ display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer; }
+  .print-opt input[type=checkbox]{ width:18px; height:18px; flex:0 0 auto; }
+
+  /* ===================== 栄養・検査値・診断 ===================== */
+  .note-nutrition{ font-size:12px; color:var(--sub); margin-top:6px; line-height:1.6; min-height:1em; }
+  .note-nutrition .ok-item{ display:inline-block; background:#f2f8f6; border:1px solid var(--border); border-radius:999px; padding:2px 8px; margin:2px 4px 2px 0; color:var(--ink); }
+  .note-nutrition .ng-item{ color:var(--sub); }
+  .nutri-badge{ display:inline-flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .nutri-badge span{ font-size:11px; padding:1px 6px; border-radius:6px; background:#f7f9fb; border:1px solid var(--border); }
+  .stage-badge{ display:inline-block; padding:4px 12px; border-radius:999px; font-size:14px; font-weight:800; color:#fff; }
+  .stage-badge.low{ background:var(--safe); }
+  .stage-badge.mid{ background:var(--warn); }
+  .stage-badge.high{ background:var(--danger); }
+  .stage-badge.unknown{ background:var(--sub); }
+  .diag-title{ font-size:16px; font-weight:800; margin:2px 0 10px; }
+  .diag-desc{ font-size:14px; line-height:1.7; margin:8px 0; }
+  .advice-list{ margin:8px 0 0; padding-left:1.3em; font-size:13.5px; line-height:1.8; }
+  .advice-list li{ margin-bottom:3px; }
+  .diag-disclaimer{ font-size:11.5px; color:var(--sub); margin-top:12px; padding-top:10px; border-top:1px dashed var(--border); }
+  .target-suggest{ background:#f7f9fb; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13px; margin-top:10px; }
+  .target-suggest b{ font-size:14px; }
+  .lab-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border:1px solid var(--border); border-radius:10px; margin-bottom:6px; background:#fafbfc; }
+  .lab-row .d{ font-weight:700; font-size:13px; }
+  .lab-row .m{ font-size:12px; color:var(--sub); margin-top:2px; }
+  .hint{ font-size:12px; color:var(--sub); margin:0 0 8px; }
+  .abnormal-cell{ border:2px solid var(--danger); color:var(--danger); font-weight:700; background:#fff4f2; }
+  tr.cat-row td{ background:#eef2f5; padding:5px 6px; font-size:12px; text-align:left; }
+  .le-item-row{ display:flex; align-items:center; gap:10px; margin-top:6px; }
+  .le-item-row .lbl{ flex:0 0 180px; font-size:13px; color:var(--sub); }
+  .le-item-row input{ flex:0 0 140px; }
+
+  /* ===================== 印刷 ===================== */
+  @page{ size:A4; margin:15mm; }
+  #printArea{ display:none; }
+  .print-doc{ color:#000; font-family:"Hiragino Sans","Yu Gothic",Meiryo,system-ui,sans-serif; }
+  .print-header{ margin-bottom:14px; border-bottom:2px solid #333; padding-bottom:8px; }
+  .print-header h1{ margin:0 0 4px; font-size:18px; }
+  .print-meta{ font-size:12px; color:#333; }
+  .print-section{ margin-bottom:18px; }
+  .print-section h2{ font-size:14px; border-left:4px solid var(--accent); padding-left:8px; margin:0 0 10px; }
+  .print-section h3{ font-size:12.5px; color:#333; margin:12px 0 6px; }
+  .print-section table{ width:100%; border-collapse:collapse; font-size:11px; margin-bottom:6px; }
+  .print-section th, .print-section td{ border:1px solid #999; padding:4px 5px; text-align:center; }
+  .print-empty{ font-size:12px; color:#666; }
+  .print-stats{ display:flex; flex-wrap:wrap; gap:8px; }
+  .print-stats .pstat{ border:1px solid #999; border-radius:6px; padding:5px 9px; font-size:11.5px; }
+  .print-break{ page-break-before:always; }
+  .print-svg-wrap{ margin-bottom:12px; }
+  .print-svg-wrap .cap{ font-size:11.5px; color:#333; margin-bottom:4px; font-weight:700; }
+  .print-svg-wrap svg{ width:100%; height:auto; display:block; }
+
+  @media print{
+    body.printing > *:not(#printArea){ display:none !important; }
+    body.printing #printArea{ display:block !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>慢性腎臓病管理アプリ</h1>
+  <div class="sub" id="headerSub">読み込み中…</div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="today">今日の記録</button>
+  <button class="tab-btn" data-tab="chart">グラフ</button>
+  <button class="tab-btn" data-tab="history">履歴</button>
+  <button class="tab-btn" data-tab="labs">検査値・診断</button>
+  <button class="tab-btn" data-tab="profile">プロフィール・薬</button>
+  <button class="tab-btn" data-tab="data">データ管理</button>
+  <button class="tab-btn" data-tab="print">印刷</button>
+</div>
+
+<div class="container">
+
+  <!-- 今日の記録 -->
+  <div class="panel active" id="panel-today">
+
+    <div class="card">
+      <div class="date-nav">
+        <button class="btn-ghost btn-sm" id="prevDay">◀ 前日</button>
+        <input type="date" id="currentDate">
+        <button class="btn-ghost btn-sm" id="nextDay">翌日 ▶</button>
+        <button class="btn-primary btn-sm" id="todayBtn">今日</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 id="formTitle">記録を追加</h2>
+      <div class="row">
+        <div class="field" style="flex:0 0 110px;">
+          <label>時刻</label>
+          <input type="time" id="f_time">
+        </div>
+        <div class="field" style="flex:0 0 130px;">
+          <label>体重(kg・任意)</label>
+          <input type="number" step="0.1" id="f_weight">
+        </div>
+      </div>
+      <div class="vitals-grid" style="margin-top:8px;">
+        <div class="vital-group">
+          <label>最高血圧（mmHg・最大3回・プルダウン80〜190）</label>
+          <div class="triple-labels"><span>1回目</span><span>2回目</span><span>3回目</span></div>
+          <div class="triple-row">
+            <select id="f_sys1"></select>
+            <select id="f_sys2"></select>
+            <select id="f_sys3"></select>
+          </div>
+          <div class="avg-line">平均: <span id="f_sys_avg" class="avg-val" style="color:var(--sys);">--</span></div>
+          <div class="target-line">目標: <b id="f_sys_target">--</b>　差: <b id="f_sys_diff">--</b></div>
+        </div>
+        <div class="vital-group">
+          <label>最低血圧（mmHg・最大3回・プルダウン60〜100）</label>
+          <div class="triple-labels"><span>1回目</span><span>2回目</span><span>3回目</span></div>
+          <div class="triple-row">
+            <select id="f_dia1"></select>
+            <select id="f_dia2"></select>
+            <select id="f_dia3"></select>
+          </div>
+          <div class="avg-line">平均: <span id="f_dia_avg" class="avg-val" style="color:var(--dia);">--</span></div>
+          <div class="target-line">目標: <b id="f_dia_target">--</b>　差: <b id="f_dia_diff">--</b></div>
+        </div>
+        <div class="vital-group">
+          <label>心拍数（bpm・最大3回・プルダウン40〜120）</label>
+          <div class="triple-labels"><span>1回目</span><span>2回目</span><span>3回目</span></div>
+          <div class="triple-row">
+            <select id="f_hr1"></select>
+            <select id="f_hr2"></select>
+            <select id="f_hr3"></select>
+          </div>
+          <div class="avg-line">平均: <span id="f_hr_avg" class="avg-val" style="color:var(--hr);">--</span></div>
+          <div class="target-line">目標: <b id="f_hr_target">--</b>　差: <b id="f_hr_diff">--</b></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="field" style="flex:2 1 200px;">
+          <label>メモ（食事・睡眠・薬・活動など）</label>
+          <input type="text" id="f_note" list="noteHistoryList" placeholder="例）朝食、卵、納豆、キムチ など">
+          <datalist id="noteHistoryList"></datalist>
+          <div class="note-nutrition" id="noteNutritionPreview"></div>
+        </div>
+        <div class="field" style="flex:0 0 100px;">
+          <label>水分(cc)</label>
+          <input type="number" id="f_water">
+        </div>
+        <div class="field" style="flex:0 0 100px;">
+          <label>運動(分)</label>
+          <input type="number" id="f_exercise">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="field" style="flex:1 1 100%;">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="f_flag" style="width:18px;height:18px;">
+            めまい・発作など特記症状あり（記録一覧に「症状」表示）
+          </label>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn-primary" id="saveEntryBtn">保存</button>
+        <button class="btn-ghost" id="cancelEditBtn" style="display:none;">キャンセル</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>本日の記録一覧</h2>
+      <div class="m" id="entryMaxSummary" style="margin-bottom:8px;"></div>
+      <div style="overflow-x:auto;">
+        <table id="entryTable">
+          <thead>
+            <tr><th>時刻</th><th>上</th><th>下</th><th>脈</th><th>体重</th><th>メモ</th><th>水分</th><th>運動</th><th>蛋白質</th><th>塩分</th><th>K</th><th>kcal</th><th></th></tr>
+          </thead>
+          <tbody id="entryTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="entryEmpty" style="display:none;">記録がまだありません。上のフォームから追加してください。</div>
+    </div>
+
+    <div class="card">
+      <h2>本日の服薬チェック</h2>
+      <div class="med-batch">
+        <div class="field" style="flex:0 0 130px;">
+          <label>全種一括服薬時刻</label>
+          <input type="time" id="mc_batch_time">
+        </div>
+        <button class="btn-primary btn-sm" id="mc_batch_apply">全種まとめて記録</button>
+      </div>
+      <div id="medChecklist"></div>
+    </div>
+
+    <div class="card">
+      <h3>本日の統計</h3>
+      <div class="stat-grid" id="dayStats"></div>
+    </div>
+  </div>
+
+  <!-- グラフ -->
+  <div class="panel" id="panel-chart">
+    <div class="card">
+      <div class="date-nav">
+        <button class="btn-ghost btn-sm" id="chartPrevDay">◀ 前日</button>
+        <input type="date" id="chartDate">
+        <button class="btn-ghost btn-sm" id="chartNextDay">翌日 ▶</button>
+      </div>
+      <h3>血圧（上・下）</h3>
+      <div class="chart-wrap"><svg id="bpChart" width="100%" height="260" viewBox="0 0 900 260"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--sys)"></i>最高血圧</span>
+        <span><i style="background:var(--dia)"></i>最低血圧</span>
+        <span><i style="background:var(--sys);opacity:.5;border-top:2px dashed var(--sys);height:0;"></i>目標(上)</span>
+        <span><i style="background:var(--dia);opacity:.5;border-top:2px dashed var(--dia);height:0;"></i>目標(下)</span>
+        <span><i style="background:var(--med);opacity:.75;border-top:2px solid var(--med);height:0;"></i>服薬時刻</span>
+      </div>
+      <h3 style="margin-top:16px;">心拍数</h3>
+      <div class="chart-wrap"><svg id="hrChart" width="100%" height="200" viewBox="0 0 900 200"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--hr)"></i>心拍数</span>
+        <span><i style="background:var(--hr);opacity:.5;border-top:2px dashed var(--hr);height:0;"></i>目標</span>
+        <span><i style="background:var(--med);opacity:.75;border-top:2px solid var(--med);height:0;"></i>服薬時刻</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>推移（全期間の日平均）</h2>
+      <div class="row" style="margin-bottom:8px;">
+        <div class="field" style="flex:0 0 140px;">
+          <label>表示日数</label>
+          <select id="trendRange">
+            <option value="14">直近14日</option>
+            <option value="30">直近30日</option>
+            <option value="9999" selected>すべて</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-wrap"><svg id="trendChart" width="100%" height="260"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--sys)"></i>平均最高血圧</span>
+        <span><i style="background:var(--dia)"></i>平均最低血圧</span>
+        <span><i style="background:var(--hr)"></i>平均心拍数</span>
+        <span><i style="background:var(--sys);opacity:.5;border-top:2px dashed var(--sys);height:0;"></i>目標(上)</span>
+        <span><i style="background:var(--dia);opacity:.5;border-top:2px dashed var(--dia);height:0;"></i>目標(下)</span>
+        <span><i style="background:var(--hr);opacity:.5;border-top:2px dashed var(--hr);height:0;"></i>目標(脈)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>eGFR推移（腎機能・診断結果）</h2>
+      <div class="chart-wrap"><svg id="egfrChart" width="100%" height="260" viewBox="0 0 900 260"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--egfr)"></i>eGFR実測値</span>
+        <span style="color:var(--safe);">G1/G2 ≥60</span>
+        <span style="color:var(--warn);">G3a 45〜59</span>
+        <span style="color:#c0785a;">G3b 30〜44</span>
+        <span style="color:var(--danger);">G4/G5 &lt;30</span>
+      </div>
+      <h3 style="margin-top:16px;">血清クレアチニン(mg/dL)</h3>
+      <div class="chart-wrap"><svg id="creChart" width="100%" height="160" viewBox="0 0 900 160"></svg></div>
+      <h3 style="margin-top:14px;">血清カリウム(mEq/L)</h3>
+      <div class="chart-wrap"><svg id="kLabChart" width="100%" height="160" viewBox="0 0 900 160"></svg></div>
+      <p class="datalist-hint">※検査値タブで登録した検査日のみプロットされます（不定期の検査のため、日々の血圧グラフとは間隔が異なります）。</p>
+    </div>
+
+    <div class="card">
+      <h2>栄養摂取量の推移（メモから自動算出・1日合計）</h2>
+      <div class="row" style="margin-bottom:4px;">
+        <div class="field" style="flex:0 0 140px;">
+          <label>表示日数</label>
+          <select id="nutriTrendRange">
+            <option value="14">直近14日</option>
+            <option value="30" selected>直近30日</option>
+            <option value="9999">すべて</option>
+          </select>
+        </div>
+      </div>
+      <h3>たんぱく質(g)</h3>
+      <div class="chart-wrap"><svg id="protChart" width="100%" height="160" viewBox="0 0 900 160"></svg></div>
+      <h3 style="margin-top:14px;">塩分(g)</h3>
+      <div class="chart-wrap"><svg id="saltChart" width="100%" height="160" viewBox="0 0 900 160"></svg></div>
+      <h3 style="margin-top:14px;">カリウム(mg)</h3>
+      <div class="chart-wrap"><svg id="potassiumChart" width="100%" height="160" viewBox="0 0 900 160"></svg></div>
+      <h3 style="margin-top:14px;">エネルギー(kcal)</h3>
+      <div class="chart-wrap"><svg id="energyChart" width="100%" height="160" viewBox="0 0 900 160"></svg></div>
+      <div class="legend"><span>破線 = 目標値（プロフィール・薬タブで設定）</span></div>
+      <p class="datalist-hint">※栄養量はメモの記載内容から自動で概算した参考値です。実際の摂取量とは異なる場合があります。</p>
+    </div>
+  </div>
+
+  <!-- 履歴 -->
+  <div class="panel" id="panel-history">
+    <div class="card">
+      <h2>記録がある日</h2>
+      <div class="hist-list" id="histList"></div>
+    </div>
+  </div>
+
+  <!-- 検査値・診断 -->
+  <div class="panel" id="panel-labs">
+    <div class="card" id="diagCard">
+      <h2>現在の診断結果</h2>
+      <div id="diagBody"></div>
+    </div>
+
+    <div class="card" id="labEditCard" style="display:none;">
+      <h2 id="labEditTitle">検査値を追加</h2>
+      <div class="row">
+        <div class="field" style="flex:0 0 160px;"><label>検査日</label><input type="date" id="le_date"></div>
+        <div class="field" style="flex:1 1 220px;"><label>施設名（病院名）</label><input type="text" id="le_note" placeholder="例）かかりつけ医クリニック"></div>
+      </div>
+      <div id="leItemRows" style="margin-top:10px;"></div>
+      <div class="row" style="margin-top:10px;align-items:flex-end;">
+        <div class="field" style="flex:1 1 220px;"><label>項目を追加</label>
+          <select id="le_add_key"></select>
+        </div>
+        <div class="field" style="flex:0 0 140px;"><label>値</label><input type="text" id="le_add_value" placeholder="例）1.2"></div>
+        <button type="button" class="btn-ghost btn-sm" id="leAddItemBtn">＋ 項目に追加</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn-primary" id="leSaveBtn">検査値を保存</button>
+        <button class="btn-ghost" id="leCancelBtn">キャンセル</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>検査値の履歴</h2>
+      <div class="row" style="margin-bottom:10px;"><button type="button" class="btn-primary btn-sm" id="labAddNewBtn">＋ 検査値を追加</button></div>
+      <div class="hist-list" id="labList"></div>
+      <div class="empty" id="labEmpty" style="display:none;">検査値がまだ登録されていません。</div>
+    </div>
+
+    <div class="card">
+      <h2>最新検査値の自動判定</h2>
+      <div id="labLatestJudgeBody"></div>
+    </div>
+
+    <div class="card">
+      <h2>検査値の推移表（自動判定・全項目）</h2>
+      <div id="labTrendBody"></div>
+    </div>
+
+    <div class="card">
+      <h2>基準値外があった項目の推移グラフ</h2>
+      <div id="labAbnormalCharts"></div>
+    </div>
+  </div>
+
+  <!-- プロフィール・薬 -->
+  <div class="panel" id="panel-profile">
+    <div class="card">
+      <h2>プロフィール</h2>
+      <div class="row">
+        <div class="field"><label>名前</label><input type="text" id="p_name"></div>
+        <div class="field" style="flex:0 0 80px;"><label>年齢</label><input type="number" id="p_age"></div>
+        <div class="field" style="flex:0 0 100px;"><label>性別</label>
+          <select id="p_gender"><option>男性</option><option>女性</option><option>その他</option></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="field"><label>身長(cm)</label><input type="number" id="p_height"></div>
+        <div class="field"><label>目標体重(kg)</label><input type="number" step="0.1" id="p_weight"></div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="field" style="flex:1 1 100%;"><label>既往歴</label><textarea id="p_history" placeholder="例）前立腺肥大、頻尿、痛風、高尿酸値"></textarea></div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="field" style="flex:1 1 100%;"><label>現在の病状・メモ</label><textarea id="p_condition" placeholder="例）高血圧（発作時190/90以上、めまいで歩行不可）"></textarea></div>
+      </div>
+      <div class="row" style="margin-top:12px;"><button class="btn-primary" id="saveProfileBtn">プロフィールを保存</button></div>
+    </div>
+
+    <div class="card">
+      <h2>目標値</h2>
+      <h3>血圧・心拍</h3>
+      <div class="row">
+        <div class="field"><label>目標 最高血圧</label><input type="number" id="t_sys"></div>
+        <div class="field"><label>目標 最低血圧</label><input type="number" id="t_dia"></div>
+        <div class="field"><label>目標 心拍数</label><input type="number" id="t_hr"></div>
+      </div>
+      <h3 style="margin-top:14px;">栄養（1日あたり・メモから自動算出した合計と比較）</h3>
+      <div class="row">
+        <div class="field"><label>目標 たんぱく質(g)</label><input type="number" step="0.1" id="t_protein"></div>
+        <div class="field"><label>目標 食塩(g)</label><input type="number" step="0.1" id="t_salt"></div>
+        <div class="field"><label>目標 カリウム(mg・空欄=制限なし)</label><input type="number" id="t_potassium"></div>
+        <div class="field"><label>目標 エネルギー(kcal)</label><input type="number" id="t_energy"></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn-ghost btn-sm" id="calcTargetBtn">現在のステージ・体重から目安を計算</button>
+      </div>
+      <div class="row" style="margin-top:12px;"><button class="btn-primary" id="saveTargetBtn">目標値を保存</button></div>
+    </div>
+
+    <div class="card">
+      <h2>服薬管理</h2>
+      <div id="medList"></div>
+      <h3 style="margin-top:14px;">薬を追加</h3>
+      <div class="row">
+        <div class="field"><label>薬品名</label><input type="text" id="m_name"></div>
+        <div class="field" style="flex:0 0 100px;"><label>1錠量</label><input type="text" id="m_dose" placeholder="例）20mg"></div>
+        <div class="field" style="flex:0 0 110px;"><label>服用数</label><input type="text" id="m_perdose" placeholder="例）20mg×1"></div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="field"><label>効果</label><input type="text" id="m_effect"></div>
+        <div class="field"><label>服用タイミング</label><input type="text" id="m_timing" placeholder="例）朝食後30分 1回/日"></div>
+      </div>
+      <div class="row" style="margin-top:12px;"><button class="btn-primary" id="addMedBtn">追加</button></div>
+    </div>
+  </div>
+
+  <!-- データ管理 -->
+  <div class="panel" id="panel-data">
+    <div class="card">
+      <h2>バックアップ</h2>
+      <p class="datalist-hint">このアプリのデータはお使いのブラウザ内（このファイルを開いた場所）に保存されます。ブラウザやPCを変える場合は、必ずバックアップ(JSON)を保存し、新しい環境でインポートしてください。</p>
+      <div class="toolbar">
+        <button class="btn-primary" id="exportJsonBtn">JSONバックアップを保存</button>
+        <button class="btn-ghost" id="exportCsvBtn">記録をCSVで書き出し（Excel用）</button>
+        <button class="btn-ghost" id="exportLabCsvBtn">検査値をCSVで書き出し</button>
+      </div>
+      <h3>インポート（このアプリのJSONバックアップの復元）</h3>
+      <input type="file" id="importFile" accept="application/json">
+    </div>
+    <div class="card">
+      <h2>血液検査管理アプリからインポート</h2>
+      <p class="datalist-hint">「血液検査管理アプリ」で検査結果を登録し、「CKD連携」タブから書き出したJSONファイルを読み込むと、その検査日に記録されている全項目（eGFR・クレアチニン・カリウム・尿蛋白を含む）と施設名がまとめて取り込まれます（同じ日付の既存データがあれば、書き出し側に値がある項目だけ上書きされます）。</p>
+      <input type="file" id="importCkdLabFile" accept="application/json">
+      <p class="datalist-hint" id="ckdLabImportStatus" style="margin-top:8px;"></p>
+    </div>
+    <div class="card">
+      <h2>クラウド同期（スマホ連携）</h2>
+      <p class="datalist-hint">Googleスプレッドシート経由で、パソコンとスマホの間でデータを同期します。血圧管理アプリで使っていたのと同じ「ウェブアプリのURL」と「合言葉」をそのまま入力してください（同じ場所にデータが保存されます）。</p>
+      <div class="row">
+        <div class="field" style="flex:1 1 100%;"><label>Web App URL</label><input type="text" id="sync_url" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:1 1 100%;"><label>合言葉</label><input type="text" id="sync_token" placeholder="例）nozawa-bp-2026-1"></div>
+      </div>
+      <div class="row">
+        <label style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="sync_auto" style="width:18px;height:18px;">
+          自動的に同期する（データを変更するたびに送信、起動時・画面に戻った時に受信）
+        </label>
+      </div>
+      <div class="toolbar" style="margin-top:10px;">
+        <button class="btn-primary" id="syncSaveBtn">設定を保存</button>
+        <button class="btn-ghost" id="syncNowBtn">今すぐ同期</button>
+      </div>
+      <p class="datalist-hint" id="syncStatus" style="margin-top:8px;">まだ同期していません</p>
+    </div>
+    <div class="card">
+      <h2>血圧管理アプリからのデータ移行（一度だけ）</h2>
+      <p class="datalist-hint">血圧管理アプリでこれまで記録してきた血圧・体重・メモなどの記録を、このアプリに取り込みます。検査値・目標値・服薬リスト・プロフィールなど、このアプリ側のデータは変更されません。同じ日付・同じ記録がすでにある場合は重複して取り込まれません（何度実行しても安全です）。</p>
+      <div class="toolbar">
+        <button class="btn-primary" id="bpMigrateCloudBtn">クラウドから取り込む（上の同期設定を保存してから）</button>
+      </div>
+      <h3 style="margin-top:14px;">または、血圧管理アプリの「JSONバックアップ」ファイルから取り込む</h3>
+      <input type="file" id="bpMigrateFile" accept="application/json">
+      <p class="datalist-hint" id="bpMigrateStatus" style="margin-top:8px;"></p>
+    </div>
+    <div class="card">
+      <h2>初期化</h2>
+      <p class="datalist-hint">全データを削除し、Excelから取り込んだ初期履歴データに戻します。元に戻せません。</p>
+      <button class="btn-danger" id="resetBtn">初期状態にリセット</button>
+    </div>
+    <div class="card">
+      <h2>保存件数</h2>
+      <div class="stat-grid" id="dataStats"></div>
+    </div>
+  </div>
+
+  <!-- 印刷 -->
+  <div class="panel" id="panel-print">
+    <div class="card">
+      <h2>印刷設定</h2>
+      <p class="datalist-hint">印刷したい項目にチェックを入れて「印刷する」を押してください。A4用紙に収まるレイアウトで印刷されます（PDFとして保存する場合は、印刷ダイアログの送信先で「PDFに保存」を選んでください）。</p>
+      <div class="toolbar">
+        <button class="btn-ghost btn-sm" id="pr_selectAll">すべて選択</button>
+        <button class="btn-ghost btn-sm" id="pr_selectNone">すべて解除</button>
+      </div>
+
+      <h3 style="margin-top:14px;">今日の記録（対象日: <span id="pr_todayDateLabel">--</span>）</h3>
+      <div class="print-opt"><label><input type="checkbox" id="pr_today_list" checked> 記録一覧（血圧・体重・メモ・栄養・服薬など）</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_today_meds"> 服薬チェック状況</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_today_stats" checked> 本日の統計（栄養集計を含む）</label></div>
+
+      <h3 style="margin-top:16px;">検査値・診断結果</h3>
+      <div class="print-opt"><label><input type="checkbox" id="pr_diag" checked> 現在の診断結果（ステージ・食事療法の目安）</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_lab_history"> 検査値の履歴一覧</label></div>
+
+      <h3 style="margin-top:16px;">グラフ（対象日: <span id="pr_chartDateLabel">--</span>）</h3>
+      <div class="print-opt"><label><input type="checkbox" id="pr_chart_bp"> 血圧グラフ（上・下）</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_chart_hr"> 心拍数グラフ</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_chart_trend"> 推移グラフ（全期間の日平均）</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_chart_egfr"> eGFR推移グラフ</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_chart_cre_k"> クレアチニン・カリウム推移グラフ</label></div>
+
+      <h3 style="margin-top:16px;">記録ログ（期間指定）</h3>
+      <div class="print-opt"><label><input type="checkbox" id="pr_log"> 記録ログ一覧表を印刷する</label></div>
+      <div class="row" style="margin-top:6px;">
+        <div class="field" style="flex:0 0 170px;"><label>開始日</label><input type="date" id="pr_log_from"></div>
+        <div class="field" style="flex:0 0 170px;"><label>終了日</label><input type="date" id="pr_log_to"></div>
+      </div>
+
+      <h3 style="margin-top:16px;">プロフィール・薬</h3>
+      <div class="print-opt"><label><input type="checkbox" id="pr_profile"> プロフィール情報</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_targets"> 目標値</label></div>
+      <div class="print-opt"><label><input type="checkbox" id="pr_meds_list"> 服薬管理リスト（薬の一覧）</label></div>
+
+      <div class="row" style="margin-top:16px;">
+        <button class="btn-primary" id="pr_printBtn">印刷する（A4）</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+
+<script>
+"use strict";
+
+/* ===================== デフォルトデータ ===================== */
+const DEFAULT_PROFILE = {
+  name: "野澤　隆",
+  age: 71,
+  gender: "男性",
+  height: 168,
+  weight: 73.4,
+  history: "前立腺肥大、頻尿、痛風、高尿酸値",
+  condition: "高血圧（発作時 190以上/90以上、めまいのため歩行不可）、eGFRが46.3"
+};
+const DEFAULT_TARGETS = { sys: 125, dia: 75, hr: 70, protein: 56, salt: 6, potassium: null, energy: 1860 };
+const DEFAULT_MEDS = [
+  { id: "m1", name: "オサメサルタンOD錠（DSEP）", dose: "20mg", perDose: "20mg×1", effect: "降圧(腎臓に影響が少ない)", timing: "朝食後30分 1回/日" },
+  { id: "m2", name: "二フェジピンCR錠（日医工）", dose: "20mg", perDose: "20mg×1", effect: "降圧、狭心症改善", timing: "朝食後30分 1回/日" },
+  { id: "m3", name: "ダパグリフロジン（日新）", dose: "5mg", perDose: "5mg×1", effect: "糖の排出を促す、腎臓の保護(10年間維持)", timing: "朝食後30分 1回/日" },
+  { id: "m4", name: "フェブキソスタット錠（JG）", dose: "10mg", perDose: "10mg×1", effect: "痛風・高尿酸値対処", timing: "朝食後30分 1回/日" }
+];
+
+const SEED_HISTORY = [];
+
+const STORAGE_KEY = "ckdTrackerData_v1";
+
+/* ===================== CKDステージ・食事療法の目安（参考値） =====================
+   日本腎臓学会のCKD診療ガイド等で一般に示されているステージ区分・食事療法基準を
+   簡略化した参考値。実際の診断・治療方針は必ず主治医の指示に従うこと。 */
+const CKD_STAGES = [
+  { key:"G1", min:90,  max:Infinity, label:"G1（正常または高値）",       risk:"low"  },
+  { key:"G2", min:60,  max:89.999,   label:"G2（正常または軽度低下）",     risk:"low"  },
+  { key:"G3a",min:45,  max:59.999,   label:"G3a（軽度〜中等度低下）",      risk:"mid"  },
+  { key:"G3b",min:30,  max:44.999,   label:"G3b（中等度〜高度低下）",      risk:"mid"  },
+  { key:"G4", min:15,  max:29.999,   label:"G4（高度低下）",              risk:"high" },
+  { key:"G5", min:0,   max:14.999,   label:"G5（末期腎不全）",            risk:"high" }
+];
+
+const CKD_DIET_TABLE = {
+  G1:  { energyPerKg:[25,35], proteinPerKg:[1.0,1.3], saltMax:6, potassiumMax:null },
+  G2:  { energyPerKg:[25,35], proteinPerKg:[1.0,1.3], saltMax:6, potassiumMax:null },
+  G3a: { energyPerKg:[25,35], proteinPerKg:[0.8,1.0], saltMax:6, potassiumMax:null },
+  G3b: { energyPerKg:[25,35], proteinPerKg:[0.6,0.8], saltMax:6, potassiumMax:2000 },
+  G4:  { energyPerKg:[25,35], proteinPerKg:[0.6,0.8], saltMax:6, potassiumMax:1500 },
+  G5:  { energyPerKg:[25,35], proteinPerKg:[0.6,0.8], saltMax:6, potassiumMax:1500 }
+};
+
+const CKD_STAGE_DESC = {
+  G1:  "腎機能は正常または高値です。原疾患（糖尿病・高血圧など）がある場合はその管理を継続しましょう。",
+  G2:  "腎機能は正常〜軽度低下です。生活習慣（減塩・体重管理・禁煙など）の見直しを続けましょう。",
+  G3a: "腎機能が軽度〜中等度に低下しています（対象ステージ）。食事療法（減塩・たんぱく質量の見直し）と血圧管理が重要な時期です。定期的な検査で経過を確認しましょう。",
+  G3b: "腎機能の中等度〜高度低下がみられます。たんぱく質・カリウムの管理がより重要になります。主治医・管理栄養士との相談を継続してください。",
+  G4:  "腎機能が高度に低下しています。専門的な食事療法や、将来の治療選択（腎代替療法など）について早めに主治医とよく相談してください。",
+  G5:  "末期腎不全の状態です。主治医の指示のもと、透析療法や腎移植などについて相談してください。"
+};
+
+const CKD_ADVICE_COMMON = [
+  "食塩は1日6g未満を目安にしましょう（減塩しょうゆ・だしの活用、汁物は1日1杯までなど）。",
+  "たんぱく質は指示量を守りましょう。自己判断での極端な制限は低栄養のリスクがあるため避けてください。",
+  "血圧はできるだけ目標値内に保つよう、服薬と生活習慣の両方で管理しましょう。",
+  "体重の急な増加はむくみ（体液貯留）のサインのことがあるため、変化があれば早めに相談してください。",
+  "市販の鎮痛薬（NSAIDs）や一部のサプリメントは腎臓に負担をかけることがあるため、使用前に医師・薬剤師に相談しましょう。",
+  "貧血症状（立ちくらみ・だるさ）や、進行期にはリン・カルシウムの管理も重要になります。",
+  "禁煙・適度な運動・十分な睡眠も腎臓の負担軽減に役立ちます。",
+  "定期的な血液検査・尿検査で経過観察を続けましょう。"
+];
+
+function getStageForEgfr(egfr){
+  if (egfr==null || egfr==="" || isNaN(Number(egfr))) return null;
+  const v = Number(egfr);
+  return CKD_STAGES.find(s=> v>=s.min && v<=s.max) || null;
+}
+function getStageInfo(key){ return CKD_STAGES.find(s=>s.key===key) || null; }
+
+function stdWeightKg(){
+  const h = DATA && DATA.profile && DATA.profile.height;
+  if (!h) return null;
+  return round1(Math.pow(Number(h)/100, 2) * 22);
+}
+
+// ステージ・体重から推奨栄養量の目安（中央値）を計算する
+function computeSuggestedNutritionTargets(stageKey){
+  const table = CKD_DIET_TABLE[stageKey] || CKD_DIET_TABLE.G3a;
+  const w = stdWeightKg() || (DATA && DATA.profile && DATA.profile.weight) || 60;
+  const energyMid = (table.energyPerKg[0]+table.energyPerKg[1])/2;
+  const proteinMid = (table.proteinPerKg[0]+table.proteinPerKg[1])/2;
+  return {
+    energy: Math.round(w*energyMid),
+    protein: round1(w*proteinMid),
+    salt: table.saltMax,
+    potassium: table.potassiumMax
+  };
+}
+
+/* ===================== 食品栄養データベース（メモからの自動概算用） =====================
+   1回分の標準的な目安量あたりのたんぱく質(g)・食塩相当量(g)・カリウム(mg)・エネルギー(kcal)。
+   scaleBase=1 の品目は「個数・本数などの数」がそのまま倍率になる（例：卵2個 → ×2）。
+   scaleBase>1 の品目（ご飯・麺・飲み物など）は、メモ中の数値をscaleBaseで割った値が倍率になる
+   （例：麦茶400cc、scaleBase=200 → ×2）。数値の記載が無ければ標準量1人前として計算する。
+   ※あくまで概算の参考値です。実際の食品・分量により誤差があります。 */
+const FOOD_DB = [
+  { keys:["ご飯","白米","白ご飯","ごはん"], unit:"茶碗1杯(150g)", scaleBase:150, protein:3.8, salt:0,   k:39,  energy:252 },
+  { keys:["コメパン","米粉パン"],            unit:"1個(80g)",     scaleBase:80,  protein:4.0, salt:0.6, k:60,  energy:200 },
+  { keys:["食パン"],                         unit:"1枚(60g)",     scaleBase:60,  protein:5.3, salt:0.7, k:86,  energy:149 },
+  { keys:["うどん"],                         unit:"1玉(200g)",    scaleBase:200, protein:5.2, salt:0.6, k:18,  energy:210 },
+  { keys:["そば"],                           unit:"1玉(170g)",    scaleBase:170, protein:8.2, salt:0,   k:62,  energy:224 },
+  { keys:["パスタ","スパゲティ"],            unit:"1人前(240g)",  scaleBase:240, protein:8.8, salt:0,   k:30,  energy:300 },
+  { keys:["味噌汁","みそ汁"],                unit:"1杯(150ml)",   scaleBase:150, protein:3.0, salt:1.2, k:210, energy:40 },
+  { keys:["卵","たまご"],                    unit:"1個(50g)",     scaleBase:1,   protein:6.2, salt:0.2, k:65,  energy:76 },
+  { keys:["納豆"],                           unit:"1パック(40g)", scaleBase:1,   protein:6.6, salt:0.5, k:264, energy:76 },
+  { keys:["豆腐"],                           unit:"1/3丁(100g)",  scaleBase:1,   protein:5.3, salt:0,   k:150, energy:56 },
+  { keys:["鶏肉","鶏むね","鶏もも","とり肉"],unit:"100g",         scaleBase:100, protein:23,  salt:0.1, k:340, energy:116 },
+  { keys:["豚肉"],                           unit:"100g",         scaleBase:100, protein:19,  salt:0.1, k:310, energy:263 },
+  { keys:["牛肉"],                           unit:"100g",         scaleBase:100, protein:21,  salt:0.1, k:320, energy:196 },
+  { keys:["ひき肉"],                         unit:"100g",         scaleBase:100, protein:17.5,salt:0.2, k:260, energy:245 },
+  { keys:["ウインナー","ソーセージ"],        unit:"1本(15g)",     scaleBase:1,   protein:1.75,salt:0.3, k:27.5,energy:47.5 },
+  { keys:["ハム"],                           unit:"1枚(20g)",     scaleBase:1,   protein:3.6, salt:0.5, k:68,  energy:39 },
+  { keys:["鮭","さけ","サケ"],               unit:"1切れ(80g)",   scaleBase:1,   protein:17.8,salt:0.2, k:285, energy:133 },
+  { keys:["さば","サバ"],                    unit:"1切れ(80g)",   scaleBase:1,   protein:16.5,salt:0.3, k:260, energy:210 },
+  { keys:["まぐろ","刺身"],                  unit:"5切れ(50g)",   scaleBase:50,  protein:13,  salt:0.05,k:220, energy:62 },
+  { keys:["いわし"],                         unit:"1尾(60g)",     scaleBase:1,   protein:11.7,salt:0.1, k:190, energy:100 },
+  { keys:["えび","エビ"],                    unit:"1尾(12g)",     scaleBase:1,   protein:2.6, salt:0.04,k:32,  energy:12 },
+  { keys:["しらす"],                         unit:"大さじ1(5g)",  scaleBase:1,   protein:1.2, salt:0.2, k:17,  energy:10.5 },
+  { keys:["牛乳"],                           unit:"コップ1杯(200ml)",scaleBase:200,protein:6.6,salt:0.2, k:300, energy:134 },
+  { keys:["ヨーグルト"],                     unit:"1個(100g)",    scaleBase:1,   protein:3.6, salt:0.1, k:170, energy:62 },
+  { keys:["チーズ"],                         unit:"1枚(18g)",     scaleBase:1,   protein:4.0, salt:0.5, k:11,  energy:61 },
+  { keys:["きゅうり"],                       unit:"1本(100g)",    scaleBase:1,   protein:1.0, salt:0,   k:200, energy:14 },
+  { keys:["トマトジュース"],                 unit:"コップ1杯(200ml・無塩)",scaleBase:200,protein:1.4,salt:0.2,k:400,energy:32 },
+  { keys:["トマト"],                         unit:"1個(150g)",    scaleBase:1,   protein:1.1, salt:0,   k:315, energy:29 },
+  { keys:["キャベツ"],                       unit:"1枚(50g)",     scaleBase:1,   protein:0.65,salt:0,   k:100, energy:12 },
+  { keys:["にんじん","人参"],                unit:"1/4本(50g)",   scaleBase:1,   protein:0.3, salt:0,   k:135, energy:19 },
+  { keys:["じゃがいも"],                     unit:"1個(100g)",    scaleBase:1,   protein:1.6, salt:0,   k:410, energy:76 },
+  { keys:["なす"],                           unit:"1本(80g)",     scaleBase:1,   protein:0.9, salt:0,   k:176, energy:18 },
+  { keys:["ブロッコリー"],                   unit:"小鉢1皿(60g)", scaleBase:1,   protein:3.2, salt:0,   k:234, energy:20 },
+  { keys:["ほうれん草"],                     unit:"お浸し1食(80g)",scaleBase:1,  protein:1.8, salt:0.1, k:552, energy:15 },
+  { keys:["かぼちゃ"],                       unit:"1食(80g)",     scaleBase:1,   protein:1.5, salt:0.2, k:360, energy:62 },
+  { keys:["小葱","ねぎ"],                    unit:"薬味(5g)",     scaleBase:1,   protein:0.05,salt:0,   k:10,  energy:1.5 },
+  { keys:["もずく酢","モズク酢"],            unit:"1パック(70g)", scaleBase:1,   protein:0.4, salt:0.7, k:5,   energy:20 },
+  { keys:["キムチ"],                         unit:"小鉢1皿(50g)", scaleBase:1,   protein:1.1, salt:1.1, k:210, energy:23 },
+  { keys:["梅干し"],                         unit:"1個(10g)",     scaleBase:1,   protein:0.1, salt:2.2, k:44,  energy:3 },
+  { keys:["たくあん"],                       unit:"1切れ(10g)",   scaleBase:1,   protein:0.1, salt:0.5, k:14,  energy:4 },
+  { keys:["佃煮"],                           unit:"小さじ1(5g)",  scaleBase:1,   protein:0.5, salt:0.35,k:22,  energy:11 },
+  { keys:["醤油","しょうゆ"],                unit:"小さじ1(6g)",  scaleBase:1,   protein:0.5, salt:0.9, k:22,  energy:5 },
+  { keys:["味噌","みそ"],                    unit:"大さじ1(18g)", scaleBase:1,   protein:2.0, salt:2.2, k:74,  energy:35 },
+  { keys:["塩"],                             unit:"1g",           scaleBase:1,   protein:0,   salt:1.0, k:0,   energy:0 },
+  { keys:["マヨネーズ"],                     unit:"大さじ1(12g)", scaleBase:1,   protein:0.2, salt:0.2, k:3,   energy:84 },
+  { keys:["ドレッシング"],                   unit:"大さじ1(15g)", scaleBase:1,   protein:0.1, salt:0.5, k:10,  energy:40 },
+  { keys:["ゴマペースト","胡麻ペースト"],    unit:"大さじ1(18g)", scaleBase:1,   protein:3.3, salt:0,   k:120, energy:108 },
+  { keys:["オリーブオイル"],                 unit:"大さじ1(12g)", scaleBase:1,   protein:0,   salt:0,   k:0,   energy:110 },
+  { keys:["黒砂糖"],                         unit:"大さじ1(9g)",  scaleBase:1,   protein:0.1, salt:0,   k:100, energy:33 },
+  { keys:["麦茶"],                           unit:"コップ1杯(200ml)",scaleBase:200,protein:0,  salt:0,   k:6,   energy:2 },
+  { keys:["シナモン紅茶"],                   unit:"1杯(150ml)",   scaleBase:150, protein:0.1, salt:0,   k:8,   energy:2 },
+  { keys:["紅茶"],                           unit:"カップ1杯(150ml)",scaleBase:150,protein:0.1,salt:0,  k:8,   energy:1 },
+  { keys:["コーヒー"],                       unit:"カップ1杯(150ml)",scaleBase:150,protein:0.2,salt:0,  k:65,  energy:6 },
+  { keys:["緑茶","お茶"],                    unit:"湯呑み1杯(150ml)",scaleBase:150,protein:0.05,salt:0, k:17,  energy:0 },
+  { keys:["ジュース","オレンジジュース"],    unit:"コップ1杯(200ml)",scaleBase:200,protein:0.6,salt:0,  k:340, energy:84 },
+  { keys:["スポーツドリンク"],               unit:"500ml",        scaleBase:500, protein:0,   salt:0.6, k:20,  energy:125 },
+  { keys:["せんべい"],                       unit:"1枚(20g)",     scaleBase:1,   protein:1.0, salt:0.3, k:40,  energy:77 },
+  { keys:["チョコレート"],                   unit:"1かけ(5g)",    scaleBase:1,   protein:0.3, salt:0,   k:19,  energy:28 },
+  { keys:["ポテトチップス"],                 unit:"小袋(60g)",    scaleBase:60,  protein:3.1, salt:0.6, k:720, energy:336 },
+  { keys:["バナナ"],                         unit:"1本(100g)",    scaleBase:1,   protein:1.1, salt:0,   k:360, energy:93 },
+  { keys:["りんご"],                         unit:"1/2個(130g)",  scaleBase:1,   protein:0.2, salt:0,   k:156, energy:71 },
+  { keys:["みかん"],                         unit:"1個(80g)",     scaleBase:1,   protein:0.5, salt:0,   k:130, energy:38 },
+  { keys:["ぶどう"],                         unit:"1房(150g)",    scaleBase:150, protein:0.6, salt:0,   k:222, energy:89 },
+  { keys:["メロン"],                         unit:"1/8カット(120g)",scaleBase:120,protein:1.3,salt:0,   k:396, energy:50 },
+  { keys:["スイカ"],                         unit:"1切れ(200g)",  scaleBase:200, protein:1.2, salt:0,   k:240, energy:74 }
+];
+
+let FOOD_KEY_INDEX = null;
+function buildFoodIndex(){
+  const idx = [];
+  FOOD_DB.forEach(item=>{ item.keys.forEach(k=>idx.push({key:k, item})); });
+  idx.sort((a,b)=> b.key.length - a.key.length); // より長い（具体的な）キーワードを優先
+  return idx;
+}
+function matchFoodInToken(token){
+  if (!FOOD_KEY_INDEX) FOOD_KEY_INDEX = buildFoodIndex();
+  for (let i=0;i<FOOD_KEY_INDEX.length;i++){
+    if (token.indexOf(FOOD_KEY_INDEX[i].key) !== -1) return FOOD_KEY_INDEX[i];
+  }
+  return null;
+}
+function extractMultiplier(token, key, scaleBase){
+  const rest = token.split(key).join("");
+  const m = rest.match(/([0-9]+(?:\.[0-9]+)?)/);
+  if (!m) return 1;
+  const num = parseFloat(m[1]);
+  if (!num || isNaN(num)) return 1;
+  return num / (scaleBase||1);
+}
+function tokenizeNote(text){
+  return String(text||"").split(/[、，,\+＋・\/\s　]+/).map(s=>s.trim()).filter(Boolean);
+}
+// メモのテキストから、認識できた食品の栄養量合計を概算する
+function parseNutritionFromNote(text){
+  const tokens = tokenizeNote(text);
+  const matched = [];
+  const unmatched = [];
+  const total = { protein:0, salt:0, k:0, energy:0 };
+  tokens.forEach(tok=>{
+    const found = matchFoodInToken(tok);
+    if (!found){ unmatched.push(tok); return; }
+    const mult = extractMultiplier(tok, found.key, found.item.scaleBase);
+    total.protein += found.item.protein*mult;
+    total.salt    += found.item.salt*mult;
+    total.k       += found.item.k*mult;
+    total.energy  += found.item.energy*mult;
+    matched.push({ token:tok, name:found.item.keys[0], unit:found.item.unit, mult: Math.round(mult*100)/100 });
+  });
+  return {
+    protein: round1(total.protein), salt: round1(total.salt),
+    k: Math.round(total.k), energy: Math.round(total.energy),
+    matched, unmatched
+  };
+}
+function emptyNutrition(){ return { protein:0, salt:0, k:0, energy:0, matched:[], unmatched:[] }; }
+
+/* ===================== データ層 ===================== */
+function buildInitialData(){
+  return {
+    profile: Object.assign({}, DEFAULT_PROFILE),
+    targets: Object.assign({}, DEFAULT_TARGETS),
+    meds: DEFAULT_MEDS.map(m => Object.assign({}, m)),
+    days: {},
+    labs: {},
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+
+let DATA = null;
+
+function loadData(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw){
+    try { DATA = JSON.parse(raw); }
+    catch(e){ DATA = buildInitialData(); }
+  } else {
+    DATA = buildInitialData();
+    saveData();
+  }
+  if (!DATA.meds) DATA.meds = DEFAULT_MEDS.map(m=>Object.assign({},m));
+  if (!DATA.targets) DATA.targets = Object.assign({}, DEFAULT_TARGETS);
+  if (DATA.targets.protein==null && DATA.targets.protein!==0) DATA.targets.protein = DEFAULT_TARGETS.protein;
+  if (DATA.targets.salt==null) DATA.targets.salt = DEFAULT_TARGETS.salt;
+  if (DATA.targets.energy==null) DATA.targets.energy = DEFAULT_TARGETS.energy;
+  if (!DATA.profile) DATA.profile = Object.assign({}, DEFAULT_PROFILE);
+  if (!DATA.days) DATA.days = {};
+  if (!DATA.labs) DATA.labs = {};
+  if (DATA.everSynced === undefined) DATA.everSynced = false;
+}
+
+function saveData(){
+  DATA.updatedAt = new Date().toISOString();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+  scheduleCloudPush();
+}
+
+function getLab(dateStr){
+  if (!DATA.labs[dateStr]) DATA.labs[dateStr] = { egfr:null, cre:null, uacr:"", k:null, note:"", items:{} };
+  if (!DATA.labs[dateStr].items) DATA.labs[dateStr].items = {};
+  return DATA.labs[dateStr];
+}
+function getLatestLab(){
+  const dates = Object.keys(DATA.labs||{}).filter(d=>DATA.labs[d] && DATA.labs[d].egfr!=null).sort();
+  if (!dates.length) return null;
+  return Object.assign({date: dates[dates.length-1]}, DATA.labs[dates[dates.length-1]]);
+}
+
+function getDay(dateStr){
+  if (!DATA.days[dateStr]) DATA.days[dateStr] = { weight:null, entries:[], medsTaken:{} };
+  return DATA.days[dateStr];
+}
+
+/* ===================== クラウド同期（スマホ連携・Googleスプレッドシート） =====================
+   血圧管理アプリで使っていたのと同じ仕組み（Google Apps Script + スプレッドシート）を、
+   同じURL・同じ合言葉のまま流用する。1つのURLにつき1つのデータしか保存できない仕様のため、
+   このアプリを使い始めたら血圧管理アプリ側は同期に使わないこと（データの取り合いになる）。 */
+const SYNC_CONFIG_KEY = "ckdSyncConfig_v1";
+let lastSyncedAt = null;
+let syncInProgress = false;
+let pushTimer = null;
+
+function getSyncConfig(){
+  try {
+    const cfg = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY));
+    return cfg || { url:"", token:"", autoSync:false };
+  } catch(e){
+    return { url:"", token:"", autoSync:false };
+  }
+}
+function setSyncConfig(cfg){
+  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(cfg));
+}
+
+function scheduleCloudPush(){
+  const cfg = getSyncConfig();
+  if (!cfg.url || !cfg.token || !cfg.autoSync) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(()=>{
+    pushToCloud().then(res=>{
+      if (res && res.ok){ lastSyncedAt = new Date(); }
+      updateSyncStatusUI(res && res.ok ? null : (res && res.error));
+    });
+  }, 1500);
+}
+
+async function pushToCloud(){
+  const cfg = getSyncConfig();
+  if (!cfg.url || !cfg.token) return { ok:false, error:"未設定" };
+  try {
+    const res = await fetch(cfg.url, {
+      method: "POST",
+      body: JSON.stringify({ token: cfg.token, data: JSON.stringify(DATA), updatedAt: DATA.updatedAt })
+    });
+    return await res.json();
+  } catch(e){
+    return { ok:false, error:String(e) };
+  }
+}
+
+async function pullFromCloud(cfgOverride){
+  const cfg = cfgOverride || getSyncConfig();
+  if (!cfg.url || !cfg.token) return { ok:false, error:"未設定" };
+  try {
+    const sep = cfg.url.includes("?") ? "&" : "?";
+    const res = await fetch(cfg.url + sep + "token=" + encodeURIComponent(cfg.token));
+    return await res.json();
+  } catch(e){
+    return { ok:false, error:String(e) };
+  }
+}
+
+// クラウドと同期する。リモートの方が新しければ取り込み、ローカルの方が新しければ送信する。
+async function syncNow(showToastMsg){
+  const cfg = getSyncConfig();
+  if (!cfg.url || !cfg.token){
+    if (showToastMsg) toast("同期設定（URL・合言葉）が未入力です");
+    return;
+  }
+  if (syncInProgress) return;
+  syncInProgress = true;
+  try {
+    const remote = await pullFromCloud();
+    if (remote && remote.ok === false){
+      updateSyncStatusUI(remote.error || "同期エラー");
+      if (showToastMsg) toast("同期に失敗しました: "+(remote.error||""));
+      return;
+    }
+    const remoteUpdatedAt = (remote && remote.updatedAt) || "";
+    const remoteHasData = !!(remote && remote.data);
+
+    if (remoteHasData && (!DATA.everSynced || remoteUpdatedAt > (DATA.updatedAt || ""))){
+      DATA = JSON.parse(remote.data);
+      DATA.everSynced = true;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+      refreshAllViews();
+      if (showToastMsg) toast("クラウドの最新データを取り込みました");
+    } else if (!remoteHasData || DATA.updatedAt > remoteUpdatedAt){
+      DATA.everSynced = true;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+      const pushRes = await pushToCloud();
+      if (pushRes && pushRes.ok === false){
+        updateSyncStatusUI(pushRes.error || "送信エラー");
+        if (showToastMsg) toast("送信に失敗しました: "+(pushRes.error||""));
+        return;
+      }
+    }
+    lastSyncedAt = new Date();
+    updateSyncStatusUI(null);
+    if (showToastMsg) toast("同期しました");
+  } catch(e){
+    updateSyncStatusUI(String(e));
+    if (showToastMsg) toast("同期に失敗しました: "+e);
+  } finally {
+    syncInProgress = false;
+  }
+}
+
+function updateSyncStatusUI(errorMsg){
+  const el = document.getElementById("syncStatus");
+  if (!el) return;
+  if (errorMsg){
+    el.textContent = "同期エラー: " + errorMsg;
+  } else if (lastSyncedAt){
+    el.textContent = "最終同期: " + lastSyncedAt.toLocaleString();
+  } else {
+    el.textContent = "まだ同期していません";
+  }
+}
+
+function renderSyncSettings(){
+  const cfg = getSyncConfig();
+  const urlEl = document.getElementById("sync_url");
+  const tokenEl = document.getElementById("sync_token");
+  const autoEl = document.getElementById("sync_auto");
+  if (!urlEl) return;
+  urlEl.value = cfg.url || "";
+  tokenEl.value = cfg.token || "";
+  autoEl.checked = !!cfg.autoSync;
+  updateSyncStatusUI(null);
+}
+
+/* ===================== 血圧管理アプリからのデータ移行（一度だけ） =====================
+   血圧管理アプリのDATA（{days, profile, targets, meds, ...}）を受け取り、
+   days[].entries のみをこのアプリに取り込む（検査値・目標値・服薬・プロフィールには触れない）。
+   entryのidで重複チェックするので、同じデータを何度取り込んでも安全（二重登録されない）。 */
+function mergeBpDataIntoCkd(bpData){
+  let importedDates = 0, importedEntries = 0, skippedEntries = 0;
+  if (!bpData || typeof bpData !== "object" || !bpData.days) {
+    return { ok:false, error:"血圧管理アプリのデータ形式ではありません" };
+  }
+  Object.keys(bpData.days).forEach(dateStr=>{
+    const src = bpData.days[dateStr];
+    if (!src || !Array.isArray(src.entries) || src.entries.length===0) return;
+    const day = getDay(dateStr);
+    if (day.weight==null && src.weight!=null) day.weight = src.weight;
+    let addedThisDate = 0;
+    src.entries.forEach(srcEntry=>{
+      const exists = day.entries.some(e=>e.id === srcEntry.id);
+      if (exists){ skippedEntries++; return; }
+      day.entries.push(Object.assign({}, srcEntry));
+      addedThisDate++;
+      importedEntries++;
+    });
+    if (addedThisDate>0) importedDates++;
+  });
+  if (importedEntries>0){
+    saveData();
+    refreshAllViews();
+  }
+  return { ok:true, importedDates, importedEntries, skippedEntries };
+}
+
+/* ===================== ユーティリティ ===================== */
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function nowTimeStr(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+function timeToMinutes(t){
+  if (!t) return 0;
+  const [h,m] = t.split(":").map(Number);
+  return h*60 + (m||0);
+}
+function fmtDate(dateStr){
+  const [y,m,d] = dateStr.split("-");
+  return `${y}/${m}/${d}`;
+}
+function avg(arr){ const a = arr.filter(v=>v!=null && !isNaN(v)); return a.length? a.reduce((s,v)=>s+Number(v),0)/a.length : null; }
+function maxv(arr){ const a = arr.filter(v=>v!=null && !isNaN(v)); return a.length? Math.max(...a.map(Number)) : null; }
+// key: "sys" | "dia" | "hr" その日の全記録から、各記録の平均ではなく個々の測定値（最大3回分）を集める
+// （3回分の生データを持たない旧データは、代わりに記録済みの平均値を1件として扱う）
+function collectVitalRawValues(day, key){
+  const valsKey = key+"Vals";
+  const out = [];
+  (day.entries||[]).forEach(e=>{
+    if (Array.isArray(e[valsKey]) && e[valsKey].some(v=>v!=null)){
+      e[valsKey].forEach(v=>{ if (v!=null && !isNaN(v)) out.push(Number(v)); });
+    } else if (e[key]!=null && !isNaN(e[key])){
+      out.push(Number(e[key]));
+    }
+  });
+  return out;
+}
+// key別の値を、その値が記録された時刻(entry.time)とペアで返す（最大値の測定時刻表示に使用）
+function collectVitalRawValuesWithTime(day, key){
+  const valsKey = key+"Vals";
+  const out = [];
+  (day.entries||[]).forEach(e=>{
+    if (Array.isArray(e[valsKey]) && e[valsKey].some(v=>v!=null)){
+      e[valsKey].forEach(v=>{ if (v!=null && !isNaN(v)) out.push({value:Number(v), time:e.time||""}); });
+    } else if (e[key]!=null && !isNaN(e[key])){
+      out.push({value:Number(e[key]), time:e.time||""});
+    }
+  });
+  return out;
+}
+function maxWithTime(list){
+  if (!list.length) return null;
+  return list.reduce((best,cur)=> cur.value > best.value ? cur : best, list[0]);
+}
+function round1(v){ return v==null ? null : Math.round(v*10)/10; }
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._h);
+  toast._h = setTimeout(()=>t.classList.remove("show"), 1800);
+}
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ===================== 状態 ===================== */
+let currentDate = todayStr();
+let chartDate = todayStr();
+let editingEntryId = null;
+
+/* ===================== タブ ===================== */
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-"+btn.dataset.tab).classList.add("active");
+    if (btn.dataset.tab === "chart") renderChartTab();
+    if (btn.dataset.tab === "history") renderHistoryTab();
+    if (btn.dataset.tab === "labs") renderLabsTab();
+    if (btn.dataset.tab === "data") renderDataTab();
+    if (btn.dataset.tab === "print") renderPrintTab();
+  });
+});
+
+/* ===================== 今日の記録 ===================== */
+// その日の統計値を算出する（画面表示・印刷の両方で使用）
+function computeDayStats(day){
+  const sysAvg = avg(day.entries.map(e=>e.sys));
+  const diaAvg = avg(day.entries.map(e=>e.dia));
+  const hrAvg = avg(day.entries.map(e=>e.hr));
+  // 最大値は各記録の平均ではなく、血圧記録に入力された（最大3回分の）個々の測定値から算出する
+  const sysMaxInfo = maxWithTime(collectVitalRawValuesWithTime(day,"sys"));
+  const diaMaxInfo = maxWithTime(collectVitalRawValuesWithTime(day,"dia"));
+  const hrMaxInfo  = maxWithTime(collectVitalRawValuesWithTime(day,"hr"));
+  const water = day.entries.reduce((s,e)=>s+(Number(e.water)||0),0);
+  const exercise = day.entries.reduce((s,e)=>s+(Number(e.exercise)||0),0);
+  const t = DATA.targets;
+  const nutri = computeDayNutrition(day);
+  return [
+    ["sys","平均 最高血圧", sysAvg!=null? round1(sysAvg)+" (目標"+t.sys+")" : "—"],
+    ["dia","平均 最低血圧", diaAvg!=null? round1(diaAvg)+" (目標"+t.dia+")" : "—"],
+    ["hr","平均 心拍数", hrAvg!=null? round1(hrAvg)+" (目標"+t.hr+")" : "—"],
+    ["","最高血圧の最大値", sysMaxInfo? sysMaxInfo.value+(sysMaxInfo.time?" ("+sysMaxInfo.time+")":"") : "—"],
+    ["","最低血圧の最大値", diaMaxInfo? diaMaxInfo.value+(diaMaxInfo.time?" ("+diaMaxInfo.time+")":"") : "—"],
+    ["","心拍数の最大値", hrMaxInfo? hrMaxInfo.value+(hrMaxInfo.time?" ("+hrMaxInfo.time+")":"") : "—"],
+    ["","水分合計", water+" cc"],
+    ["","運動合計", exercise+" 分"],
+    ["prot","合計 たんぱく質(概算)", nutri.protein+"g (目標"+(t.protein??"-")+"g)"],
+    ["salt","合計 食塩(概算)", nutri.salt+"g (目標"+(t.salt??"-")+"g未満)"],
+    ["potassium","合計 カリウム(概算)", nutri.k+"mg"+(t.potassium?" (目標"+t.potassium+"mg以下)":"")],
+    ["energy","合計 エネルギー(概算)", nutri.energy+"kcal (目標"+(t.energy??"-")+"kcal)"],
+  ];
+}
+
+// その日の全記録のメモから概算した栄養量を合計する
+function computeDayNutrition(day){
+  const total = { protein:0, salt:0, k:0, energy:0 };
+  (day.entries||[]).forEach(e=>{
+    const n = e.nutrition || (e.note ? parseNutritionFromNote(e.note) : emptyNutrition());
+    total.protein += Number(n.protein)||0;
+    total.salt    += Number(n.salt)||0;
+    total.k       += Number(n.k)||0;
+    total.energy  += Number(n.energy)||0;
+  });
+  return { protein: round1(total.protein), salt: round1(total.salt), k: Math.round(total.k), energy: Math.round(total.energy) };
+}
+
+// 血圧記録 ＋ 本日服薬チェックで服薬済みの記録を時刻順にまとめる（画面表示・印刷の両方で使用）
+function getCombinedRows(day){
+  const entryRows = day.entries.map(e=>({type:"entry", time:e.time||"", entry:e}));
+  // 服薬時刻が未設定（旧データ等）でも、服用済みチェックが入っていれば一覧に表示する
+  const medRows = (DATA.meds||[])
+    .map(m=>({ med:m, me: normalizeMedEntry(day.medsTaken[m.id]) }))
+    .filter(x=>x.me.taken)
+    .map(x=>({type:"med", time:x.me.time||"", med:x.med, me:x.me}));
+  return entryRows.concat(medRows).sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
+}
+
+function renderTodayTab(){
+  document.getElementById("currentDate").value = currentDate;
+  const day = getDay(currentDate);
+
+  // 統計
+  const stats = computeDayStats(day);
+  document.getElementById("dayStats").innerHTML = stats.map(([cls,l,v])=>
+    `<div class="stat ${cls}"><div class="v">${v}</div><div class="l">${l}</div></div>`
+  ).join("");
+
+  const sysMaxToday = maxv(collectVitalRawValues(day,"sys"));
+  const diaMaxToday = maxv(collectVitalRawValues(day,"dia"));
+  const hrMaxToday  = maxv(collectVitalRawValues(day,"hr"));
+  document.getElementById("entryMaxSummary").textContent =
+    `本日の最大値： 上 ${sysMaxToday??'—'} / 下 ${diaMaxToday??'—'} / 脈 ${hrMaxToday??'—'}`;
+
+  // テーブル（血圧記録 ＋ 本日服薬チェックで服薬済みの記録を時刻順にまとめて表示）
+  const tbody = document.getElementById("entryTbody");
+  const combinedRows = getCombinedRows(day);
+
+  if (combinedRows.length===0){
+    tbody.innerHTML = "";
+    document.getElementById("entryEmpty").style.display = "block";
+  } else {
+    document.getElementById("entryEmpty").style.display = "none";
+    tbody.innerHTML = combinedRows.map(row=>{
+      if (row.type === "entry"){
+        const e = row.entry;
+        const n = e.nutrition || emptyNutrition();
+        return `
+      <tr class="${e.flag?'flagged':''}" data-id="${e.id}">
+        <td>${e.time||""}</td>
+        <td style="color:var(--sys);font-weight:700;">${e.sys??""}</td>
+        <td style="color:var(--dia);font-weight:700;">${e.dia??""}</td>
+        <td style="color:var(--hr);font-weight:700;">${e.hr??""}</td>
+        <td>${e.weight??""}</td>
+        <td class="note">${escapeHtml(e.note)}${e.flag?' <span class="badge high">症状</span>':''}</td>
+        <td>${e.water??""}</td>
+        <td>${e.exercise??""}</td>
+        <td style="color:var(--prot);">${n.protein? n.protein+"g" : "—"}</td>
+        <td style="color:var(--salt);">${n.salt? n.salt+"g" : "—"}</td>
+        <td style="color:var(--potassium);">${n.k? n.k+"mg" : "—"}</td>
+        <td style="color:var(--energy);">${n.energy? n.energy+"kcal" : "—"}</td>
+        <td><div class="rowbtns">
+          <button class="btn-ghost btn-sm" onclick="editEntry('${e.id}')">編集</button>
+          <button class="btn-danger btn-sm" onclick="deleteEntry('${e.id}')">削除</button>
+        </div></td>
+      </tr>`;
+      } else {
+        const m = row.med;
+        return `
+      <tr class="med-row" data-med="${m.id}">
+        <td><input type="time" value="${row.me.time||""}" onchange="setMedTime('${m.id}', this.value)"></td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td class="note"><span class="badge med">服薬</span> ${escapeHtml(m.name)}</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td><div class="rowbtns">
+          <button class="btn-danger btn-sm" onclick="deleteMedRecord('${m.id}')">削除</button>
+        </div></td>
+      </tr>`;
+      }
+    }).join("");
+  }
+
+  // 服薬チェック
+  document.getElementById("mc_batch_time").value = nowTimeStr();
+  const mc = document.getElementById("medChecklist");
+  if (DATA.meds.length===0){
+    mc.innerHTML = '<div class="empty">プロフィール・薬タブから薬を登録してください。</div>';
+  } else {
+    mc.innerHTML = DATA.meds.map(m=>{
+      const me = normalizeMedEntry(day.medsTaken[m.id]);
+      return `
+      <div class="med-check">
+        <input type="checkbox" id="mc_${m.id}" ${me.taken?"checked":""} onchange="toggleMed('${m.id}', this.checked)">
+        <label for="mc_${m.id}" class="mname">${escapeHtml(m.name)}（${escapeHtml(m.perDose)} / ${escapeHtml(m.timing)}）</label>
+        <input type="time" id="mc_time_${m.id}" value="${me.time||""}" ${me.taken?"":"disabled"} onchange="setMedTime('${m.id}', this.value)">
+      </div>`;
+    }).join("");
+  }
+
+  refreshNoteHistory();
+}
+
+// 服薬記録は { taken:boolean, time:"HH:MM" } で保持。旧データ(真偽値のみ)も読めるように正規化する。
+function normalizeMedEntry(v){
+  if (v == null) return { taken:false, time:null };
+  if (typeof v === "boolean") return { taken: v, time: null };
+  return { taken: !!v.taken, time: v.time || null };
+}
+
+function toggleMed(medId, checked){
+  const day = getDay(currentDate);
+  const cur = normalizeMedEntry(day.medsTaken[medId]);
+  day.medsTaken[medId] = { taken: checked, time: checked ? (cur.time || document.getElementById("mc_batch_time").value || nowTimeStr()) : cur.time };
+  saveData();
+  renderTodayTab();
+  renderChartTab();
+}
+window.toggleMed = toggleMed;
+
+function setMedTime(medId, time){
+  const day = getDay(currentDate);
+  const cur = normalizeMedEntry(day.medsTaken[medId]);
+  day.medsTaken[medId] = { taken: cur.taken, time: time || null };
+  saveData();
+  renderTodayTab();
+  renderChartTab();
+}
+window.setMedTime = setMedTime;
+
+// 本日の記録一覧からの服薬記録の削除（服薬チェックを未服用に戻し、時刻もクリアする）
+window.deleteMedRecord = function(medId){
+  if (!confirm("この服薬記録を削除しますか？")) return;
+  const day = getDay(currentDate);
+  day.medsTaken[medId] = { taken:false, time:null };
+  saveData();
+  renderTodayTab();
+  renderChartTab();
+};
+
+document.getElementById("mc_batch_apply").addEventListener("click", ()=>{
+  if (DATA.meds.length===0) return;
+  const time = document.getElementById("mc_batch_time").value || nowTimeStr();
+  const day = getDay(currentDate);
+  DATA.meds.forEach(m=>{ day.medsTaken[m.id] = { taken:true, time }; });
+  saveData();
+  renderTodayTab();
+  renderChartTab();
+  toast("全種の服薬を "+time+" で記録しました");
+});
+
+function refreshNoteHistory(){
+  const notes = new Set();
+  Object.values(DATA.days).forEach(d => d.entries.forEach(e => { if (e.note) notes.add(e.note); }));
+  const dl = document.getElementById("noteHistoryList");
+  dl.innerHTML = Array.from(notes).slice(0,200).map(n=>`<option value="${escapeHtml(n)}">`).join("");
+}
+
+const VITAL_TRIPLE_IDS = {
+  sys: ["f_sys1","f_sys2","f_sys3"],
+  dia: ["f_dia1","f_dia2","f_dia3"],
+  hr:  ["f_hr1","f_hr2","f_hr3"]
+};
+
+// 数値入力はプルダウン方式（添付の入力フォームの仕様に合わせる）
+const VITAL_RANGES = { sys:[80,190], dia:[60,100], hr:[40,120] };
+
+function buildRangeOptions(min, max){
+  let html = '<option value="">--</option>';
+  for (let v = min; v <= max; v++){ html += `<option value="${v}">${v}</option>`; }
+  return html;
+}
+
+Object.keys(VITAL_TRIPLE_IDS).forEach(key=>{
+  const [min, max] = VITAL_RANGES[key];
+  const opts = buildRangeOptions(min, max);
+  VITAL_TRIPLE_IDS[key].forEach(id=>{
+    document.getElementById(id).innerHTML = opts;
+  });
+});
+
+function tripleValues(ids){
+  return ids.map(id=>{
+    const v = document.getElementById(id).value;
+    return v===""? null : Number(v);
+  });
+}
+
+function tripleAvg(key){
+  return avg(tripleValues(VITAL_TRIPLE_IDS[key]));
+}
+
+function refreshVitalAverages(){
+  const t = (DATA && DATA.targets) ? DATA.targets : DEFAULT_TARGETS;
+  Object.keys(VITAL_TRIPLE_IDS).forEach(key=>{
+    const a = tripleAvg(key);
+    document.getElementById("f_"+key+"_avg").textContent = a==null ? "--" : round1(a);
+
+    const target = t[key];
+    const targetEl = document.getElementById("f_"+key+"_target");
+    const diffEl = document.getElementById("f_"+key+"_diff");
+    targetEl.textContent = (target==null || target==="") ? "--" : target;
+    if (a==null || target==null || target===""){
+      diffEl.textContent = "--";
+      diffEl.className = "";
+    } else {
+      const diff = round1(a - target);
+      diffEl.textContent = (diff>0? "+":"") + diff;
+      diffEl.className = diff>0 ? "diff-pos" : (diff<0 ? "diff-neg" : "diff-zero");
+    }
+  });
+}
+
+function setTripleValues(key, first){
+  const ids = VITAL_TRIPLE_IDS[key];
+  document.getElementById(ids[0]).value = first??"";
+  document.getElementById(ids[1]).value = "";
+  document.getElementById(ids[2]).value = "";
+}
+
+// 編集時、3回分の生データ（sysVals/diaVals/hrVals）があればそのままプルダウンへ復元する。
+// 無い旧データの場合は従来どおり平均値のみ1つ目に入れる。
+function setTripleValuesFromEntry(key, entry){
+  const ids = VITAL_TRIPLE_IDS[key];
+  const vals = entry[key+"Vals"];
+  if (Array.isArray(vals) && vals.some(v=>v!=null)){
+    ids.forEach((id,i)=>{ document.getElementById(id).value = (vals[i]==null ? "" : vals[i]); });
+  } else {
+    setTripleValues(key, entry[key]);
+  }
+}
+
+Object.values(VITAL_TRIPLE_IDS).flat().forEach(id=>{
+  document.getElementById(id).addEventListener("input", refreshVitalAverages);
+});
+
+// 1回目→2回目→3回目、血圧(上)→血圧(下)→心拍数の順に自動でフォーカス移動する
+const VITAL_FOCUS_SEQUENCE = [
+  "f_sys1","f_dia1","f_hr1",
+  "f_sys2","f_dia2","f_hr2",
+  "f_sys3","f_dia3","f_hr3"
+];
+VITAL_FOCUS_SEQUENCE.forEach((id, idx)=>{
+  document.getElementById(id).addEventListener("change", ()=>{
+    const val = document.getElementById(id).value;
+    if (val === "") return;
+    const nextId = VITAL_FOCUS_SEQUENCE[idx+1];
+    if (nextId) document.getElementById(nextId).focus();
+  });
+});
+
+function clearForm(){
+  editingEntryId = null;
+  document.getElementById("f_time").value = nowTimeStr();
+  Object.keys(VITAL_TRIPLE_IDS).forEach(key=>setTripleValues(key, null));
+  document.getElementById("f_weight").value = "";
+  document.getElementById("f_note").value = "";
+  document.getElementById("f_water").value = "";
+  document.getElementById("f_exercise").value = "";
+  document.getElementById("f_flag").checked = false;
+  document.getElementById("formTitle").textContent = "記録を追加";
+  document.getElementById("cancelEditBtn").style.display = "none";
+  refreshVitalAverages();
+  renderNoteNutritionPreview();
+}
+
+// メモ欄の内容から認識できた食品と概算栄養量をリアルタイムに表示する
+function renderNoteNutritionPreview(){
+  const el = document.getElementById("noteNutritionPreview");
+  if (!el) return;
+  const text = document.getElementById("f_note").value;
+  if (!text.trim()){ el.innerHTML = ""; return; }
+  const n = parseNutritionFromNote(text);
+  if (n.matched.length===0){ el.innerHTML = '<span class="ng-item">食品を認識できませんでした（未対応の食品名、または食事以外のメモの可能性があります）</span>'; return; }
+  const items = n.matched.map(m=>`<span class="ok-item">${escapeHtml(m.name)}${m.mult!==1? "×"+m.mult : ""}</span>`).join("");
+  const sum = `<div class="nutri-badge"><span style="color:var(--prot);">たんぱく質 約${n.protein}g</span><span style="color:var(--salt);">食塩 約${n.salt}g</span><span style="color:var(--potassium);">カリウム 約${n.k}mg</span><span style="color:var(--energy);">エネルギー 約${n.energy}kcal</span></div>`;
+  const un = n.unmatched.length? `<div class="ng-item">未認識: ${escapeHtml(n.unmatched.join("、"))}</div>` : "";
+  el.innerHTML = `認識した食品: ${items}${sum}${un}`;
+}
+document.getElementById("f_note").addEventListener("input", renderNoteNutritionPreview);
+
+window.editEntry = function(id){
+  const day = getDay(currentDate);
+  const e = day.entries.find(x=>x.id===id);
+  if (!e) return;
+  editingEntryId = id;
+  document.getElementById("f_time").value = e.time||"";
+  setTripleValuesFromEntry("sys", e);
+  setTripleValuesFromEntry("dia", e);
+  setTripleValuesFromEntry("hr", e);
+  document.getElementById("f_weight").value = e.weight??"";
+  document.getElementById("f_note").value = e.note||"";
+  document.getElementById("f_water").value = e.water??"";
+  document.getElementById("f_exercise").value = e.exercise??"";
+  document.getElementById("f_flag").checked = !!e.flag;
+  document.getElementById("formTitle").textContent = "記録を編集";
+  document.getElementById("cancelEditBtn").style.display = "inline-block";
+  refreshVitalAverages();
+  renderNoteNutritionPreview();
+  window.scrollTo({top:0, behavior:"smooth"});
+};
+
+window.deleteEntry = function(id){
+  if (!confirm("この記録を削除しますか？")) return;
+  const day = getDay(currentDate);
+  day.entries = day.entries.filter(x=>x.id!==id);
+  saveData();
+  renderTodayTab();
+};
+
+document.getElementById("saveEntryBtn").addEventListener("click", ()=>{
+  const num = v => v===""? null : Number(v);
+  const day = getDay(currentDate);
+  const time = document.getElementById("f_time").value || nowTimeStr();
+  const entry = {
+    id: editingEntryId || uid(),
+    time,
+    sys: round1(tripleAvg("sys")),
+    dia: round1(tripleAvg("dia")),
+    hr: round1(tripleAvg("hr")),
+    sysVals: tripleValues(VITAL_TRIPLE_IDS.sys),
+    diaVals: tripleValues(VITAL_TRIPLE_IDS.dia),
+    hrVals: tripleValues(VITAL_TRIPLE_IDS.hr),
+    weight: num(document.getElementById("f_weight").value),
+    note: document.getElementById("f_note").value.trim(),
+    water: num(document.getElementById("f_water").value),
+    exercise: num(document.getElementById("f_exercise").value),
+    flag: document.getElementById("f_flag").checked
+  };
+  entry.nutrition = entry.note ? parseNutritionFromNote(entry.note) : emptyNutrition();
+  if (editingEntryId){
+    const idx = day.entries.findIndex(x=>x.id===editingEntryId);
+    if (idx>=0) day.entries[idx] = entry;
+  } else {
+    day.entries.push(entry);
+  }
+  if (entry.weight!=null) day.weight = entry.weight;
+  saveData();
+  clearForm();
+  renderTodayTab();
+  toast("保存しました");
+});
+
+document.getElementById("cancelEditBtn").addEventListener("click", clearForm);
+
+document.getElementById("prevDay").addEventListener("click", ()=>{ shiftDate(-1); });
+document.getElementById("nextDay").addEventListener("click", ()=>{ shiftDate(1); });
+document.getElementById("todayBtn").addEventListener("click", ()=>{ currentDate = todayStr(); clearForm(); renderTodayTab(); });
+document.getElementById("currentDate").addEventListener("change", (e)=>{ currentDate = e.target.value; clearForm(); renderTodayTab(); });
+
+function shiftDate(delta){
+  const d = new Date(currentDate+"T00:00:00");
+  d.setDate(d.getDate()+delta);
+  currentDate = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  clearForm();
+  renderTodayTab();
+}
+
+/* ===================== グラフ ===================== */
+const SVGNS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs){
+  const el = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function renderChartTab(){
+  document.getElementById("chartDate").value = chartDate;
+  const day = getDay(chartDate);
+  const entries = day.entries.slice().sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
+  drawBpChart(entries, day);
+  drawHrChart(entries, day);
+  drawTrendChart();
+  drawEgfrChart();
+  drawLabValueChart("creChart", "cre", "var(--danger)", 1.1, 2);
+  drawLabValueChart("kLabChart", "k", "var(--potassium)", 4.8, 2);
+  drawNutritionTrendCharts();
+}
+
+// 検査値タブで記録した項目（クレアチニン・カリウムなど）の推移をミニグラフで表示する汎用関数。
+// itemKey: DATA.labs[date]の項目名、refLine: 基準値上限の破線、yMaxMin: Yの見た目の最小上限
+function drawLabValueChart(svgId, itemKey, color, refLine, yMaxMin){
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  svg.innerHTML = "";
+  const dates = Object.keys(DATA.labs||{}).filter(d=>DATA.labs[d] && DATA.labs[d][itemKey]!=null).sort();
+  const W = 900, H = 160, padL = 44, padR = 16, padT = 12, padB = 30;
+  const vals = dates.map(d=>Number(DATA.labs[d][itemKey]));
+  const maxData = Math.max(0, ...vals);
+  const yTop = Math.max(yMaxMin, refLine*1.3, maxData*1.2, 1);
+  const yPos = v => padT + (1 - v/yTop) * (H-padT-padB);
+
+  [0, yTop/2, yTop].forEach(v=>{
+    const y = yPos(v);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"#eee",'stroke-width':1}));
+    const lbl = svgEl("text", {x:4,y:y+4,'font-size':12,fill:"#555",'font-weight':600}); lbl.textContent = Math.round(v*100)/100; svg.appendChild(lbl);
+  });
+  if (refLine!=null){
+    const y = yPos(Math.min(refLine,yTop));
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:color,'stroke-width':1.5,'stroke-dasharray':"5,4",opacity:0.7}));
+    const lbl = svgEl("text", {x:padL+4,y:y-4,'font-size':11,fill:color,'font-weight':700}); lbl.textContent = "基準値上限 "+refLine; svg.appendChild(lbl);
+  }
+  if (dates.length===0){
+    const lbl = svgEl("text", {x:W/2,y:H/2,'font-size':12,fill:"#aaa",'text-anchor':"middle"}); lbl.textContent = "検査値がまだ登録されていません"; svg.appendChild(lbl);
+    return;
+  }
+  const xf = i => padL + (dates.length<=1? (W-padL-padR)/2 : (i/(dates.length-1)) * (W-padL-padR));
+  const d = vals.map((v,i)=>(i===0?"M":"L") + xf(i).toFixed(1) + "," + yPos(v).toFixed(1)).join(" ");
+  svg.appendChild(svgEl("path",{d,fill:"none",stroke:color,'stroke-width':2}));
+  vals.forEach((v,i)=>svg.appendChild(svgEl("circle",{cx:xf(i),cy:yPos(v),r:3,fill:color})));
+  const labelStep = Math.max(1, Math.ceil(dates.length/10));
+  const lastIdx = dates.length-1;
+  dates.forEach((dt,i)=>{
+    if (i===lastIdx || i % labelStep === 0){
+      const lbl = svgEl("text", {x:xf(i),y:H-8,'font-size':11,fill:"#555",'font-weight':600,'text-anchor':"middle"});
+      lbl.textContent = dt.slice(5);
+      svg.appendChild(lbl);
+    }
+  });
+}
+
+function axisXPos(minutes, W, padL, padR){
+  return padL + (minutes/1440) * (W - padL - padR);
+}
+
+// その日に服用済み(taken=true)で時刻が入っている薬を、時刻ごとにグルーピングする
+function getMedTimeGroups(day){
+  const map = {};
+  (DATA.meds||[]).forEach(m=>{
+    const me = normalizeMedEntry(day.medsTaken ? day.medsTaken[m.id] : null);
+    if (me.taken && me.time){
+      (map[me.time] = map[me.time] || []).push(m.name);
+    }
+  });
+  return map; // { "07:30": ["薬A","薬B"], ... }
+}
+
+function drawBpChart(entries, day){
+  const svg = document.getElementById("bpChart");
+  svg.innerHTML = "";
+  const W = 900, H = 260, padL = 40, padR = 16, padT = 16, padB = 30;
+  const yMin = 40, yMax = 200;
+  const t = DATA.targets;
+
+  const yPos = v => padT + (1 - (v-yMin)/(yMax-yMin)) * (H-padT-padB);
+
+  // グリッド・Y軸ラベル
+  for (let v=yMin; v<=yMax; v+=20){
+    const y = yPos(v);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"#eee",'stroke-width':1}));
+    const lbl = svgEl("text", {x:4,y:y+4,'font-size':13,fill:"#555",'font-weight':600}); lbl.textContent = v; svg.appendChild(lbl);
+  }
+  // X軸ラベル (時刻)
+  for (let h=0; h<=24; h+=3){
+    const x = axisXPos(h*60, W, padL, padR);
+    svg.appendChild(svgEl("line", {x1:x,y1:padT,x2:x,y2:H-padB,stroke:"#f3f3f3",'stroke-width':1}));
+    const lbl = svgEl("text", {x:x,y:H-10,'font-size':12,fill:"#555",'font-weight':600,'text-anchor':"middle"}); lbl.textContent = h+":00"; svg.appendChild(lbl);
+  }
+
+  // 目標線
+  if (t.sys){
+    svg.appendChild(svgEl("line", {x1:padL,y1:yPos(t.sys),x2:W-padR,y2:yPos(t.sys),stroke:"var(--sys)",'stroke-width':1.5,'stroke-dasharray':"6,4",opacity:.7}));
+    const sysTl = svgEl("text", {x:padL+4,y:yPos(t.sys)-4,'font-size':12,fill:"var(--sys)",'font-weight':700,'text-anchor':"start"}); sysTl.textContent = t.sys; svg.appendChild(sysTl);
+  }
+  if (t.dia){
+    svg.appendChild(svgEl("line", {x1:padL,y1:yPos(t.dia),x2:W-padR,y2:yPos(t.dia),stroke:"var(--dia)",'stroke-width':1.5,'stroke-dasharray':"2,3,8,3",opacity:.7}));
+    const diaTl = svgEl("text", {x:padL+4,y:yPos(t.dia)-4,'font-size':12,fill:"var(--dia)",'font-weight':700,'text-anchor':"start"}); diaTl.textContent = t.dia; svg.appendChild(diaTl);
+  }
+
+  const pts = entries.filter(e=>e.sys!=null || e.dia!=null);
+  drawLine(svg, pts.filter(e=>e.sys!=null), e=>axisXPos(timeToMinutes(e.time),W,padL,padR), e=>yPos(e.sys), "var(--sys)");
+  drawLine(svg, pts.filter(e=>e.dia!=null), e=>axisXPos(timeToMinutes(e.time),W,padL,padR), e=>yPos(e.dia), "var(--dia)");
+
+  // 服薬時刻（直線縦線）
+  if (day){
+    const medGroups = getMedTimeGroups(day);
+    Object.keys(medGroups).sort().forEach(time=>{
+      const x = axisXPos(timeToMinutes(time), W, padL, padR);
+      const line = svgEl("line", {x1:x,y1:padT,x2:x,y2:H-padB,stroke:"var(--med)",'stroke-width':1.5,opacity:.75});
+      const title = document.createElementNS("http://www.w3.org/2000/svg","title");
+      title.textContent = "服薬 "+time+"："+medGroups[time].join("、");
+      line.appendChild(title);
+      svg.appendChild(line);
+    });
+  }
+
+  if (pts.length===0){
+    const lbl = svgEl("text", {x:W/2,y:H/2,'font-size':13,fill:"#aaa",'text-anchor':"middle"}); lbl.textContent = "この日の記録はありません"; svg.appendChild(lbl);
+  }
+}
+
+function drawHrChart(entries, day){
+  const svg = document.getElementById("hrChart");
+  svg.innerHTML = "";
+  const W = 900, H = 200, padL = 40, padR = 16, padT = 16, padB = 30;
+  const yMin = 40, yMax = 140;
+  const t = DATA.targets;
+  const yPos = v => padT + (1 - (v-yMin)/(yMax-yMin)) * (H-padT-padB);
+
+  for (let v=yMin; v<=yMax; v+=20){
+    const y = yPos(v);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"#eee",'stroke-width':1}));
+    const lbl = svgEl("text", {x:4,y:y+4,'font-size':13,fill:"#555",'font-weight':600}); lbl.textContent = v; svg.appendChild(lbl);
+  }
+  for (let h=0; h<=24; h+=3){
+    const x = axisXPos(h*60, W, padL, padR);
+    svg.appendChild(svgEl("line", {x1:x,y1:padT,x2:x,y2:H-padB,stroke:"#f3f3f3",'stroke-width':1}));
+    const lbl = svgEl("text", {x:x,y:H-10,'font-size':12,fill:"#555",'font-weight':600,'text-anchor':"middle"}); lbl.textContent = h+":00"; svg.appendChild(lbl);
+  }
+  if (t.hr){
+    svg.appendChild(svgEl("line", {x1:padL,y1:yPos(t.hr),x2:W-padR,y2:yPos(t.hr),stroke:"var(--hr)",'stroke-width':1.5,'stroke-dasharray':"2,3,8,3",opacity:.7}));
+    const hrTl = svgEl("text", {x:padL+4,y:yPos(t.hr)-4,'font-size':12,fill:"var(--hr)",'font-weight':700,'text-anchor':"start"}); hrTl.textContent = t.hr; svg.appendChild(hrTl);
+  }
+
+  const pts = entries.filter(e=>e.hr!=null);
+  drawLine(svg, pts, e=>axisXPos(timeToMinutes(e.time),W,padL,padR), e=>yPos(e.hr), "var(--hr)");
+
+  // 服薬時刻（縦線）
+  if (day){
+    const medGroups = getMedTimeGroups(day);
+    Object.keys(medGroups).sort().forEach(time=>{
+      const x = axisXPos(timeToMinutes(time), W, padL, padR);
+      const line = svgEl("line", {x1:x,y1:padT,x2:x,y2:H-padB,stroke:"var(--med)",'stroke-width':1.5,opacity:.75});
+      const title = document.createElementNS("http://www.w3.org/2000/svg","title");
+      title.textContent = "服薬 "+time+"："+medGroups[time].join("、");
+      line.appendChild(title);
+      svg.appendChild(line);
+    });
+  }
+
+  if (pts.length===0){
+    const lbl = svgEl("text", {x:W/2,y:H/2,'font-size':13,fill:"#aaa",'text-anchor':"middle"}); lbl.textContent = "この日の心拍数記録はありません"; svg.appendChild(lbl);
+  }
+}
+
+function drawLine(svg, pts, xf, yf, color){
+  if (pts.length===0) return;
+  const d = pts.map((p,i)=> (i===0?"M":"L") + xf(p).toFixed(1) + "," + yf(p).toFixed(1)).join(" ");
+  svg.appendChild(svgEl("path", {d, fill:"none", stroke:color, 'stroke-width':2.5}));
+  pts.forEach(p=>{
+    svg.appendChild(svgEl("circle", {cx:xf(p),cy:yf(p),r:3.5,fill:color}));
+  });
+}
+
+function drawTrendChart(){
+  const svg = document.getElementById("trendChart");
+  svg.innerHTML = "";
+  const range = Number(document.getElementById("trendRange").value);
+  let dates = Object.keys(DATA.days).filter(d=>DATA.days[d].entries.length>0).sort();
+  if (dates.length > range) dates = dates.slice(dates.length-range);
+
+  const W = 900, H = 260, padL = 40, padR = 16, padT = 16, padB = 44;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("width", "100%");
+
+  const yMin = 40, yMax = 200;
+  const yPos = v => padT + (1 - (v-yMin)/(yMax-yMin)) * (H-padT-padB);
+  for (let v=yMin; v<=yMax; v+=20){
+    const y = yPos(v);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"#eee",'stroke-width':1}));
+    const lbl = svgEl("text", {x:4,y:y+4,'font-size':13,fill:"#555",'font-weight':600}); lbl.textContent = v; svg.appendChild(lbl);
+  }
+
+  // 目標値の横線（最高血圧・最低血圧・心拍数）
+  const trendTargets = (DATA && DATA.targets) ? DATA.targets : DEFAULT_TARGETS;
+  function drawTargetLine(v, color){
+    if (v==null || v==="" || isNaN(Number(v))) return;
+    const y = yPos(Number(v));
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:color,'stroke-width':1.5,'stroke-dasharray':"5,4",opacity:0.7}));
+    const tgtLbl = svgEl("text", {x:padL+4,y:y-4,'font-size':12,fill:color,'font-weight':700,'text-anchor':"start"}); tgtLbl.textContent = v; svg.appendChild(tgtLbl);
+  }
+  drawTargetLine(trendTargets.sys, "var(--sys)");
+  drawTargetLine(trendTargets.dia, "var(--dia)");
+  drawTargetLine(trendTargets.hr, "var(--hr)");
+
+  if (dates.length===0){
+    const lbl = svgEl("text", {x:W/2,y:H/2,'font-size':13,fill:"#aaa",'text-anchor':"middle"}); lbl.textContent = "記録がありません"; svg.appendChild(lbl);
+    return;
+  }
+
+  const xf = i => padL + (dates.length<=1? (W-padL-padR)/2 : (i/(dates.length-1)) * (W-padL-padR));
+  const sysVals = dates.map(d=>avg(DATA.days[d].entries.map(e=>e.sys)));
+  const diaVals = dates.map(d=>avg(DATA.days[d].entries.map(e=>e.dia)));
+  const hrVals = dates.map(d=>avg(DATA.days[d].entries.map(e=>e.hr)));
+
+  function series(vals, color){
+    const pts = vals.map((v,i)=>({v,i})).filter(p=>p.v!=null);
+    if (pts.length===0) return;
+    const d = pts.map((p,idx)=>(idx===0?"M":"L") + xf(p.i).toFixed(1) + "," + yPos(p.v).toFixed(1)).join(" ");
+    svg.appendChild(svgEl("path",{d,fill:"none",stroke:color,'stroke-width':2}));
+    pts.forEach(p=>svg.appendChild(svgEl("circle",{cx:xf(p.i),cy:yPos(p.v),r:2.5,fill:color})));
+  }
+  series(sysVals, "var(--sys)");
+  series(diaVals, "var(--dia)");
+  series(hrVals, "var(--hr)");
+
+  const labelStep = Math.max(1, Math.ceil(dates.length/12));
+  const lastIdx = dates.length-1;
+  dates.forEach((d,i)=>{
+    const show = i===lastIdx || (i % labelStep === 0 && lastIdx-i >= labelStep/2);
+    if (show){
+      const lbl = svgEl("text", {x:xf(i),y:H-12,'font-size':14,fill:"#555",'font-weight':600,'text-anchor':"middle",transform:`rotate(0)`});
+      lbl.textContent = d.slice(5);
+      svg.appendChild(lbl);
+    }
+  });
+}
+
+// eGFR推移グラフ（検査値タブで記録した日のみプロット。ステージ境界の目安線付き）
+function drawEgfrChart(){
+  const svg = document.getElementById("egfrChart");
+  if (!svg) return;
+  svg.innerHTML = "";
+  const dates = Object.keys(DATA.labs||{}).filter(d=>DATA.labs[d] && DATA.labs[d].egfr!=null).sort();
+  const W = 900, H = 260, padL = 40, padR = 16, padT = 16, padB = 40;
+  const yMin = 0, yMax = 120;
+  const yPos = v => padT + (1 - (v-yMin)/(yMax-yMin)) * (H-padT-padB);
+
+  for (let v=yMin; v<=yMax; v+=20){
+    const y = yPos(v);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"#eee",'stroke-width':1}));
+    const lbl = svgEl("text", {x:4,y:y+4,'font-size':13,fill:"#555",'font-weight':600}); lbl.textContent = v; svg.appendChild(lbl);
+  }
+  // ステージ境界線（90/60/45/30/15）
+  const bounds = [
+    {v:90, c:"var(--safe)"}, {v:60, c:"var(--safe)"}, {v:45, c:"var(--warn)"},
+    {v:30, c:"#c0785a"}, {v:15, c:"var(--danger)"}
+  ];
+  bounds.forEach(b=>{
+    const y = yPos(b.v);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:b.c,'stroke-width':1.2,'stroke-dasharray':"4,4",opacity:0.6}));
+    const lbl = svgEl("text", {x:W-padR-2,y:y-4,'font-size':11,fill:b.c,'font-weight':700,'text-anchor':"end"}); lbl.textContent = b.v; svg.appendChild(lbl);
+  });
+
+  if (dates.length===0){
+    const lbl = svgEl("text", {x:W/2,y:H/2,'font-size':13,fill:"#aaa",'text-anchor':"middle"}); lbl.textContent = "検査値がまだ登録されていません"; svg.appendChild(lbl);
+    return;
+  }
+  const xf = i => padL + (dates.length<=1? (W-padL-padR)/2 : (i/(dates.length-1)) * (W-padL-padR));
+  const pts = dates.map((d,i)=>({v:DATA.labs[d].egfr, i}));
+  const d = pts.map((p,idx)=>(idx===0?"M":"L") + xf(p.i).toFixed(1) + "," + yPos(p.v).toFixed(1)).join(" ");
+  svg.appendChild(svgEl("path",{d,fill:"none",stroke:"var(--egfr)",'stroke-width':2.5}));
+  pts.forEach(p=>svg.appendChild(svgEl("circle",{cx:xf(p.i),cy:yPos(p.v),r:4,fill:"var(--egfr)"})));
+
+  const labelStep = Math.max(1, Math.ceil(dates.length/10));
+  const lastIdx = dates.length-1;
+  dates.forEach((dt,i)=>{
+    if (i===lastIdx || i % labelStep === 0){
+      const lbl = svgEl("text", {x:xf(i),y:H-10,'font-size':12,fill:"#555",'font-weight':600,'text-anchor':"middle"});
+      lbl.textContent = dt.slice(5);
+      svg.appendChild(lbl);
+    }
+  });
+}
+
+// 汎用の栄養量推移ミニグラフ（1本の折れ線＋任意の目標破線）
+function drawMetricTrend(svgId, dates, getValue, target, color, yMax){
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  svg.innerHTML = "";
+  const W = 900, H = 160, padL = 44, padR = 16, padT = 12, padB = 30;
+  const vals = dates.map(getValue);
+  const maxData = Math.max(0, ...vals.filter(v=>v!=null));
+  const yTop = Math.max(yMax, target||0, maxData*1.15, 1);
+  const yPos = v => padT + (1 - v/yTop) * (H-padT-padB);
+
+  [0, yTop/2, yTop].forEach(v=>{
+    const y = yPos(v);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"#eee",'stroke-width':1}));
+    const lbl = svgEl("text", {x:4,y:y+4,'font-size':12,fill:"#555",'font-weight':600}); lbl.textContent = Math.round(v); svg.appendChild(lbl);
+  });
+  if (target!=null){
+    const y = yPos(Math.min(target,yTop));
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:color,'stroke-width':1.5,'stroke-dasharray':"5,4",opacity:0.7}));
+  }
+  if (dates.length===0){
+    const lbl = svgEl("text", {x:W/2,y:H/2,'font-size':12,fill:"#aaa",'text-anchor':"middle"}); lbl.textContent = "記録がありません"; svg.appendChild(lbl);
+    return;
+  }
+  const xf = i => padL + (dates.length<=1? (W-padL-padR)/2 : (i/(dates.length-1)) * (W-padL-padR));
+  const pts = vals.map((v,i)=>({v,i})).filter(p=>p.v!=null);
+  if (pts.length){
+    const d = pts.map((p,idx)=>(idx===0?"M":"L") + xf(p.i).toFixed(1) + "," + yPos(p.v).toFixed(1)).join(" ");
+    svg.appendChild(svgEl("path",{d,fill:"none",stroke:color,'stroke-width':2}));
+    pts.forEach(p=>svg.appendChild(svgEl("circle",{cx:xf(p.i),cy:yPos(p.v),r:2.5,fill:color})));
+  }
+  const labelStep = Math.max(1, Math.ceil(dates.length/10));
+  const lastIdx = dates.length-1;
+  dates.forEach((dt,i)=>{
+    if (i===lastIdx || i % labelStep === 0){
+      const lbl = svgEl("text", {x:xf(i),y:H-8,'font-size':11,fill:"#555",'font-weight':600,'text-anchor':"middle"});
+      lbl.textContent = dt.slice(5);
+      svg.appendChild(lbl);
+    }
+  });
+}
+
+function drawNutritionTrendCharts(){
+  const rangeEl = document.getElementById("nutriTrendRange");
+  if (!rangeEl) return;
+  const range = Number(rangeEl.value);
+  let dates = Object.keys(DATA.days).filter(d=>DATA.days[d].entries.length>0).sort();
+  if (dates.length > range) dates = dates.slice(dates.length-range);
+  const t = DATA.targets;
+  drawMetricTrend("protChart", dates, d=>computeDayNutrition(DATA.days[d]).protein, t.protein, "var(--prot)", 60);
+  drawMetricTrend("saltChart", dates, d=>computeDayNutrition(DATA.days[d]).salt, t.salt, "var(--salt)", 8);
+  drawMetricTrend("potassiumChart", dates, d=>computeDayNutrition(DATA.days[d]).k, t.potassium, "var(--potassium)", 2000);
+  drawMetricTrend("energyChart", dates, d=>computeDayNutrition(DATA.days[d]).energy, t.energy, "var(--energy)", 2000);
+}
+
+document.getElementById("chartPrevDay").addEventListener("click", ()=>{ chartDate = shiftStr(chartDate,-1); renderChartTab(); });
+document.getElementById("chartNextDay").addEventListener("click", ()=>{ chartDate = shiftStr(chartDate,1); renderChartTab(); });
+document.getElementById("chartDate").addEventListener("change", (e)=>{ chartDate = e.target.value; renderChartTab(); });
+document.getElementById("trendRange").addEventListener("change", drawTrendChart);
+document.getElementById("nutriTrendRange").addEventListener("change", drawNutritionTrendCharts);
+
+function shiftStr(dateStr, delta){
+  const d = new Date(dateStr+"T00:00:00");
+  d.setDate(d.getDate()+delta);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+/* ===================== 履歴 ===================== */
+function renderHistoryTab(){
+  const list = document.getElementById("histList");
+  const dates = Object.keys(DATA.days).filter(d=>DATA.days[d].entries.length>0).sort().reverse();
+  if (dates.length===0){
+    list.innerHTML = '<div class="empty">記録がありません</div>';
+    return;
+  }
+  list.innerHTML = dates.map(d=>{
+    const day = DATA.days[d];
+    const sysAvg = round1(avg(day.entries.map(e=>e.sys)));
+    const diaAvg = round1(avg(day.entries.map(e=>e.dia)));
+    const hrAvg = round1(avg(day.entries.map(e=>e.hr)));
+    const sysMax = maxv(collectVitalRawValues(day,"sys"));
+    const diaMax = maxv(collectVitalRawValues(day,"dia"));
+    const hrMax  = maxv(collectVitalRawValues(day,"hr"));
+    return `<div class="hist-row" onclick="jumpToDate('${d}')">
+      <div><div class="d">${fmtDate(d)}</div><div class="m">記録 ${day.entries.length}件${day.weight?` / 体重${day.weight}kg`:''}</div></div>
+      <div style="text-align:right;">
+        <div class="m">平均 上${sysAvg??'-'} / 下${diaAvg??'-'} / 脈${hrAvg??'-'}</div>
+        <div class="m">最大 上${sysMax??'-'} / 下${diaMax??'-'} / 脈${hrMax??'-'}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+window.jumpToDate = function(d){
+  currentDate = d; chartDate = d;
+  document.querySelector('.tab-btn[data-tab="today"]').click();
+  clearForm();
+  renderTodayTab();
+};
+
+/* ===================== 検査項目データベース（血液検査管理アプリと同じ定義を移植） =====================
+   基準値・カテゴリ・定性項目の判定を、血液検査管理アプリ側のLAB_ITEM_DBと同じ内容でこのアプリにも保持する。
+   2つのアプリは別ファイル・別localStorageで動作するため、判定ロジックをそれぞれ独立して持っている。
+   血液検査管理アプリ側で項目データベースを変更した場合は、このアプリ側（LAB_ITEM_DB）も合わせて更新すること。 */
+const LAB_ITEM_DB = [
+  { key:"Height", labels:["身長"], unit:"cm", category:"身体計測", min:null, max:null },
+  { key:"Weight", labels:["体重"], unit:"kg", category:"身体計測", min:null, max:null },
+  { key:"WBC",  labels:["白血球","白血球数","WBC"], unit:"/μL", category:"血算", min:3500, max:9000 },
+  { key:"RBC",  labels:["赤血球","赤血球数","RBC"], unit:"万/μL", category:"血算", min:430, max:570 },
+  { key:"Hb",   labels:["ヘモグロビン","血色素量","血色素","Hb"], unit:"g/dL", category:"血算", min:13.5, max:17.5 },
+  { key:"Ht",   labels:["ヘマトクリット","ヘマトクリット値","Ht"], unit:"%", category:"血算", min:40, max:50 },
+  { key:"Plt",  labels:["血小板","血小板数","Plt"], unit:"万/μL", category:"血算", min:15, max:35 },
+  { key:"MCV",  labels:["MCV","平均赤血球容積"], unit:"fL", category:"血算", min:82.7, max:101.6 },
+  { key:"MCH",  labels:["MCH","平均赤血球血色素量"], unit:"pg", category:"血算", min:28.0, max:34.6 },
+  { key:"MCHC", labels:["MCHC","平均赤血球血色素濃度"], unit:"%", category:"血算", min:30.7, max:36.6 },
+  { key:"AST",  labels:["AST","GOT","AST(GOT)","AST／GOT"], unit:"U/L", category:"肝機能", min:10, max:30 },
+  { key:"ALT",  labels:["ALT","GPT","ALT(GPT)","ALT／GPT"], unit:"U/L", category:"肝機能", min:10, max:30 },
+  { key:"gGTP", labels:["γ-GTP","γGTP","ガンマGTP","ガンマ-GTP"], unit:"U/L", category:"肝機能", min:10, max:50 },
+  { key:"ALP",  labels:["ALP"], unit:"U/L", category:"肝機能", min:38, max:113 },
+  { key:"LDH",  labels:["LDH"], unit:"U/L", category:"肝機能", min:120, max:240 },
+  { key:"TBil", labels:["総ビリルビン","T-Bil"], unit:"mg/dL", category:"肝機能", min:0.2, max:1.2 },
+  { key:"TP",   labels:["総蛋白","TP"], unit:"g/dL", category:"肝機能", min:6.5, max:8.0 },
+  { key:"Alb",  labels:["アルブミン","Alb"], unit:"g/dL", category:"肝機能", min:3.8, max:5.2 },
+  { key:"BUN",  labels:["尿素窒素","BUN","UN"], unit:"mg/dL", category:"腎機能", min:8, max:20 },
+  { key:"Cre",  labels:["クレアチニン","血清クレアチニン","Cre","Cr"], unit:"mg/dL", category:"腎機能", min:0.6, max:1.1 },
+  { key:"eGFR", labels:["eGFR"], unit:"mL/分/1.73㎡", category:"腎機能", min:60, max:null },
+  { key:"UA",   labels:["尿酸","UA"], unit:"mg/dL", category:"腎機能", min:3.7, max:7.8 },
+  { key:"Na",   labels:["ナトリウム","Na"], unit:"mEq/L", category:"電解質", min:138, max:145 },
+  { key:"K",    labels:["カリウム","K"], unit:"mEq/L", category:"電解質", min:3.6, max:4.8 },
+  { key:"Cl",   labels:["クロール","クロル","Cl"], unit:"mEq/L", category:"電解質", min:101, max:108 },
+  { key:"Ca",   labels:["カルシウム","Ca"], unit:"mg/dL", category:"電解質", min:8.8, max:10.1 },
+  { key:"P",    labels:["リン","無機リン","P"], unit:"mg/dL", category:"電解質", min:2.7, max:4.6 },
+  { key:"TC",   labels:["総コレステロール","コレステロール","TC","T-Cho"], unit:"mg/dL", category:"脂質", min:142, max:248 },
+  { key:"LDL",  labels:["LDLコレステロール","LDL","悪玉コレステロール"], unit:"mg/dL", category:"脂質", min:65, max:163 },
+  { key:"HDL",  labels:["HDLコレステロール","HDL","善玉コレステロール"], unit:"mg/dL", category:"脂質", min:38, max:90 },
+  { key:"TG",   labels:["中性脂肪","トリグリセリド","TG"], unit:"mg/dL", category:"脂質", min:40, max:234 },
+  { key:"FBS",  labels:["血糖","空腹時血糖","グルコース","血糖値"], unit:"mg/dL", category:"糖代謝", min:73, max:109 },
+  { key:"HbA1c",labels:["HbA1c","ヘモグロビンA1c"], unit:"%", category:"糖代謝", min:4.9, max:6.0 },
+  { key:"CRP",  labels:["CRP"], unit:"mg/dL", category:"炎症", min:0.00, max:0.14 },
+  { key:"CK",   labels:["CK","CK(CPK)","CPK","クレアチンキナーゼ"], unit:"U/L", category:"その他", min:62, max:287 },
+  { key:"uPro", labels:["尿蛋白","尿タンパク"], unit:"", category:"尿検査結果", qualitative:true },
+  { key:"uGlu", labels:["尿糖"], unit:"", category:"尿検査結果", qualitative:true },
+  { key:"uOB",  labels:["尿潜血"], unit:"", category:"尿検査結果", qualitative:true },
+  { key:"uUro", labels:["ウロビリノーゲン"], unit:"", category:"尿検査結果", qualitative:true, normal:["-","±"] },
+  { key:"uKet", labels:["ケトン体","ケトン"], unit:"", category:"尿検査結果", qualitative:true },
+  { key:"uBil", labels:["尿ビリルビン","ビリルビン(尿)"], unit:"", category:"尿検査結果", qualitative:true },
+  { key:"uSG",  labels:["比重","尿比重"], unit:"", category:"尿検査結果", min:1.010, max:1.025 },
+  { key:"uPH",  labels:["pH","尿pH","尿PH"], unit:"", category:"尿検査結果", min:4.5, max:8.0 },
+  { key:"uNa",  labels:["尿ナトリウム"], unit:"mEq/L", category:"尿検査結果", min:null, max:null },
+  { key:"uCl",  labels:["尿クロール","尿クロル"], unit:"mEq/L", category:"尿検査結果", min:null, max:null },
+  { key:"uCre", labels:["尿クレアチニン"], unit:"mg/dL", category:"尿検査結果", min:null, max:null },
+  { key:"uSalt",labels:["食塩摂取量","推定食塩摂取量","食塩摂取量(随時尿)"], unit:"g/day", category:"尿検査結果", min:null, max:null }
+];
+const LAB_CATEGORY_ORDER = ["身体計測","血算","肝機能","腎機能","電解質","脂質","糖代謝","炎症","その他","尿検査結果"];
+
+function getItemByKey(key){ return LAB_ITEM_DB.find(i=>i.key===key); }
+
+function isQualitativeAbnormal(value, item){
+  const v = String(value||"").trim();
+  if (v === "") return false;
+  const normals = (item && item.normal) ? item.normal : ["-","−","ー","陰性","negative","neg"];
+  return !normals.includes(v.toLowerCase()) && !normals.includes(v);
+}
+
+// 値と基準範囲を比較して状態を返す（血液検査管理アプリのevalItem()と同じロジック）
+function evalItem(key, rawValue){
+  const item = getItemByKey(key);
+  if (!item) return { status:"unknown", text:String(rawValue), value:null };
+  if (item.qualitative){
+    const abn = isQualitativeAbnormal(rawValue, item);
+    return { status: abn ? "pos" : "ok", text: String(rawValue), value:null };
+  }
+  const v = parseFloat(String(rawValue).replace(/[^\d.\-]/g,""));
+  if (isNaN(v)) return { status:"unknown", text:String(rawValue), value:null };
+  if (item.min==null && item.max==null) return { status:"norange", text:String(v), value:v };
+  let status = "ok";
+  if (item.min!=null && v < item.min) status = "low";
+  if (item.max!=null && v > item.max) status = "high";
+  return { status, text:String(v), value:v };
+}
+
+function rangeText(item){
+  if (!item) return "（項目データベース未登録）";
+  if (item.qualitative) return item.normal ? `${item.normal.join("／")}が基準` : "陰性(-)が基準";
+  if (item.min!=null && item.max!=null) return `${item.min}〜${item.max}${item.unit}`;
+  if (item.min!=null) return `${item.min}${item.unit}以上`;
+  if (item.max!=null) return `${item.max}${item.unit}以下`;
+  return "（基準値の設定なし）";
+}
+
+// 項目ごとの「重症度」スコア。数値項目は基準値からの逸脱量、定性項目は -/±/1+/2+/3+ の並び順を使う。
+// 前回との比較コメント（改善/悪化/正常化）の判定にのみ使用し、診断そのものには使わない。
+function itemSeverity(item, evalResult){
+  if (!item || !evalResult) return 0;
+  if (item.qualitative){
+    const order = ["-","±","1+","2+","3+"];
+    const idx = order.indexOf(evalResult.text);
+    if (idx>=0) return idx;
+    return evalResult.status==="pos" ? 1 : 0;
+  }
+  if (evalResult.value==null) return 0;
+  if (item.min!=null && evalResult.value < item.min) return item.min - evalResult.value;
+  if (item.max!=null && evalResult.value > item.max) return evalResult.value - item.max;
+  return 0;
+}
+
+/* ===================== 検査値・診断 ===================== */
+let editingLabDate = null;
+let leWorkingItems = {};
+
+// DATA.labs[date] は egfr/cre/uacr/k（従来からの4項目、診断・既存グラフ用）に加えて、
+// items:{ 項目キー: 生の値 } として任意の項目（血液検査管理アプリからインポートした全項目や、
+// 手動で追加した項目）を保持する。labFullItems() は、旧形式（items未設定・4項目のみ）の
+// データも含めて「その日に記録されている全項目」を1つのオブジェクトにまとめて返す。
+function labFullItems(lab){
+  const w = Object.assign({}, (lab && lab.items) || {});
+  if (lab){
+    if (lab.egfr!=null && lab.egfr!=="" && (w.eGFR==null || w.eGFR==="")) w.eGFR = lab.egfr;
+    if (lab.cre!=null && lab.cre!=="" && (w.Cre==null || w.Cre==="")) w.Cre = lab.cre;
+    if (lab.k!=null && lab.k!=="" && (w.K==null || w.K==="")) w.K = lab.k;
+    if (lab.uacr && (w.uPro==null || w.uPro==="")) w.uPro = lab.uacr;
+  }
+  return w;
+}
+function labHasAnyData(lab){
+  if (!lab) return false;
+  const w = labFullItems(lab);
+  return Object.keys(w).some(k=>w[k]!=null && w[k]!=="");
+}
+function getLatestLabDateAny(){
+  const dates = Object.keys(DATA.labs||{}).filter(d=>labHasAnyData(DATA.labs[d])).sort();
+  return dates.length ? dates[dates.length-1] : null;
+}
+function itemSortKey(key){
+  const item = getItemByKey(key);
+  const cat = item ? LAB_CATEGORY_ORDER.indexOf(item.category) : 999;
+  const label = item ? item.labels[0] : key;
+  return { cat, label };
+}
+function sortItemKeys(keys){
+  return keys.slice().sort((a,b)=>{
+    const sa = itemSortKey(a), sb = itemSortKey(b);
+    if (sa.cat !== sb.cat) return sa.cat - sb.cat;
+    return sa.label.localeCompare(sb.label, "ja");
+  });
+}
+
+function closeLabEditor(){
+  editingLabDate = null;
+  leWorkingItems = {};
+  const card = document.getElementById("labEditCard");
+  if (card) card.style.display = "none";
+}
+
+function renderLeAddSelect(){
+  const sel = document.getElementById("le_add_key");
+  if (!sel) return;
+  let html = "";
+  LAB_CATEGORY_ORDER.forEach(cat=>{
+    const items = LAB_ITEM_DB.filter(i=>i.category===cat);
+    if (!items.length) return;
+    html += `<optgroup label="${escapeHtml(cat)}">` + items.map(i=>`<option value="${i.key}">${escapeHtml(i.labels[0])}</option>`).join("") + `</optgroup>`;
+  });
+  sel.innerHTML = html;
+}
+
+function renderLeItemRows(){
+  const el = document.getElementById("leItemRows");
+  if (!el) return;
+  const keys = sortItemKeys(Object.keys(leWorkingItems));
+  if (keys.length===0){
+    el.innerHTML = `<p class="hint">まだ項目がありません。下の「項目を追加」から追加してください。</p>`;
+    return;
+  }
+  el.innerHTML = keys.map(k=>{
+    const item = getItemByKey(k);
+    const label = item ? item.labels[0] : k;
+    const unit = item && item.unit ? item.unit : "";
+    return `<div class="le-item-row">
+      <div class="lbl">${escapeHtml(label)}${unit?`（${escapeHtml(unit)}）`:""}</div>
+      <input type="text" data-le-key="${escapeHtml(k)}" value="${escapeHtml(String(leWorkingItems[k]))}">
+      <button type="button" class="btn-ghost btn-sm" data-le-remove="${escapeHtml(k)}">削除</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("input[data-le-key]").forEach(inp=>{
+    inp.addEventListener("input", ()=>{ leWorkingItems[inp.dataset.leKey] = inp.value; });
+  });
+  el.querySelectorAll("button[data-le-remove]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{ delete leWorkingItems[btn.dataset.leRemove]; renderLeItemRows(); });
+  });
+}
+
+function openLabEditorFor(d){
+  const lab = DATA.labs[d];
+  if (!lab) return;
+  editingLabDate = d;
+  leWorkingItems = labFullItems(lab);
+  document.getElementById("labEditTitle").textContent = "検査値を編集";
+  document.getElementById("le_date").value = d;
+  document.getElementById("le_note").value = lab.note || "";
+  renderLeAddSelect();
+  renderLeItemRows();
+  document.getElementById("labEditCard").style.display = "block";
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+window.editLab = function(d){ openLabEditorFor(d); };
+
+window.deleteLab = function(d){
+  if (!confirm("この検査値記録を削除しますか？")) return;
+  delete DATA.labs[d];
+  saveData();
+  if (editingLabDate === d) closeLabEditor();
+  renderLabsTab();
+};
+
+document.getElementById("labAddNewBtn").addEventListener("click", ()=>{
+  editingLabDate = null;
+  leWorkingItems = {};
+  document.getElementById("labEditTitle").textContent = "検査値を追加";
+  document.getElementById("le_date").value = todayStr();
+  document.getElementById("le_note").value = "";
+  renderLeAddSelect();
+  renderLeItemRows();
+  document.getElementById("labEditCard").style.display = "block";
+  window.scrollTo({top:0, behavior:"smooth"});
+});
+
+document.getElementById("leAddItemBtn").addEventListener("click", ()=>{
+  const key = document.getElementById("le_add_key").value;
+  const value = document.getElementById("le_add_value").value.trim();
+  if (!key) return;
+  if (!value){ toast("値を入力してください"); return; }
+  leWorkingItems[key] = value;
+  document.getElementById("le_add_value").value = "";
+  renderLeItemRows();
+});
+
+document.getElementById("leCancelBtn").addEventListener("click", closeLabEditor);
+
+document.getElementById("leSaveBtn").addEventListener("click", ()=>{
+  const date = document.getElementById("le_date").value;
+  if (!date){ toast("検査日を入力してください"); return; }
+  if (Object.keys(leWorkingItems).length===0){ toast("少なくとも1つ項目を入力してください"); return; }
+  if (editingLabDate && editingLabDate !== date) delete DATA.labs[editingLabDate];
+  const lab = getLab(date);
+  lab.items = Object.assign({}, leWorkingItems);
+  lab.note = document.getElementById("le_note").value.trim();
+  // eGFR・血清クレアチニン・血清カリウム・尿蛋白は、既存の診断ロジック・eGFRグラフ等が
+  // 参照する従来フィールド（egfr/cre/k/uacr）にも同期しておく。
+  lab.egfr = (lab.items.eGFR!=null && lab.items.eGFR!=="" && !isNaN(Number(lab.items.eGFR))) ? Number(lab.items.eGFR) : null;
+  lab.cre  = (lab.items.Cre!=null && lab.items.Cre!=="" && !isNaN(Number(lab.items.Cre))) ? Number(lab.items.Cre) : null;
+  lab.k    = (lab.items.K!=null && lab.items.K!=="" && !isNaN(Number(lab.items.K))) ? Number(lab.items.K) : null;
+  lab.uacr = (lab.items.uPro!=null && lab.items.uPro!=="") ? String(lab.items.uPro) : "";
+  saveData();
+  closeLabEditor();
+  renderLabsTab();
+  toast("検査値を保存しました");
+});
+
+function renderLabsTab(){
+  renderDiagnosis();
+  renderLabList();
+  renderLabLatestJudge();
+  renderLabTrendTable();
+  renderLabAbnormalCharts();
+}
+
+function renderLabList(){
+  const el = document.getElementById("labList");
+  const dates = Object.keys(DATA.labs||{}).filter(d=>labHasAnyData(DATA.labs[d])).sort().reverse();
+  if (dates.length===0){
+    el.innerHTML = "";
+    document.getElementById("labEmpty").style.display = "block";
+    return;
+  }
+  document.getElementById("labEmpty").style.display = "none";
+  el.innerHTML = dates.map(d=>{
+    const lab = DATA.labs[d];
+    const items = labFullItems(lab);
+    const stage = lab.egfr!=null ? getStageForEgfr(lab.egfr) : null;
+    const abnormalParts = [];
+    sortItemKeys(Object.keys(items)).forEach(k=>{
+      if (items[k]==null || items[k]==="") return;
+      const item = getItemByKey(k);
+      const ev = evalItem(k, items[k]);
+      if (ev.status==="high" || ev.status==="low" || ev.status==="pos"){
+        const label = item ? item.labels[0] : k;
+        const tag = ev.status==="low" ? "低値" : (ev.status==="high" ? "高値" : "陽性");
+        abnormalParts.push(`${label} ${ev.text}${item&&item.unit?item.unit:""}（${tag}）`);
+      }
+    });
+    const abnormalText = abnormalParts.length ? "基準値外: "+abnormalParts.join("、") : "基準値外の項目はありません";
+    const riskClass = stage ? (stage.risk === "low" ? "low" : (stage.risk==="mid" ? "mid" : "high")) : "";
+    return `<div class="lab-row">
+      <div>
+        <div class="d">${fmtDate(d)}${stage?` <span class="stage-badge ${riskClass}" style="font-size:11px;padding:2px 8px;">${stage.key}</span>`:""}${lab.note?"　"+escapeHtml(lab.note):""}</div>
+        <div class="m">${escapeHtml(abnormalText)}</div>
+      </div>
+      <div class="rowbtns">
+        <button class="btn-ghost btn-sm" onclick="editLab('${d}')">編集</button>
+        <button class="btn-danger btn-sm" onclick="deleteLab('${d}')">削除</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ===================== 最新検査値の自動判定 =====================
+   一番最近の検査日に記録された全項目について、基準値に基づく判定と、その項目の
+   直前の記録と比較した改善/悪化/正常化のコメントを表示する。あくまで登録された数値と
+   基準値を機械的に比較した参考情報であり、AIによる病態推測は行わない。 */
+function findPrevValueForItem(key, beforeDate){
+  const dates = Object.keys(DATA.labs||{}).filter(d=>d<beforeDate).sort();
+  for (let i=dates.length-1;i>=0;i--){
+    const items = labFullItems(DATA.labs[dates[i]]);
+    if (items[key]!=null && items[key]!=="") return { date:dates[i], value: items[key] };
+  }
+  return null;
+}
+
+function judgeItemText(key, rawValue){
+  if (key === "eGFR"){
+    const stage = getStageForEgfr(rawValue);
+    return stage ? stage.label : "-";
+  }
+  const item = getItemByKey(key);
+  if (!item) return "項目データベース未登録のため判定できません";
+  const ev = evalItem(key, rawValue);
+  if (ev.status==="norange") return "参考記録です（基準値の設定なし）";
+  if (ev.status==="unknown") return "数値を認識できませんでした";
+  if (item.qualitative){
+    return ev.status==="pos" ? `基準値外です（${ev.text}）` : `基準値内です（${ev.text}）`;
+  }
+  if (ev.status==="ok") return `基準値(${rangeText(item)})内です`;
+  if (ev.status==="high") return `基準値(${rangeText(item)})を上回っています（高値）`;
+  if (ev.status==="low") return `基準値(${rangeText(item)})を下回っています（低値）`;
+  return ev.text;
+}
+
+// labTrendComment()に渡す {severity, isNormal} を項目種別を問わず汎用的に作る
+function buildTrendEval(key, rawValue){
+  const item = getItemByKey(key);
+  const ev = evalItem(key, rawValue);
+  const isNormal = ev.status==="ok" || ev.status==="norange";
+  const severity = itemSeverity(item, ev);
+  return { severity, isNormal, ev };
+}
+
+function labTrendComment(curEval, prevEval){
+  if (!prevEval) return "この項目は今回が初めての記録のため、比較対象がありません。";
+  if (curEval.severity < prevEval.severity){
+    return curEval.isNormal
+      ? "前回の記録より改善し、基準値内（正常範囲）になりました。"
+      : "前回の記録より改善傾向にありますが、まだ基準値外です。引き続き経過観察をおすすめします。";
+  }
+  if (curEval.severity > prevEval.severity){
+    return "前回の記録より悪化しています（経過観察・治療について主治医にご相談ください）。";
+  }
+  return curEval.isNormal
+    ? "前回の記録と比べて基準値内で安定しています。"
+    : "前回の記録から大きな変化はありません。引き続き経過観察をおすすめします。";
+}
+
+function renderLabLatestJudge(){
+  const container = document.getElementById("labLatestJudgeBody");
+  if (!container) return;
+  const latestDate = getLatestLabDateAny();
+  if (!latestDate){
+    container.innerHTML = `<p class="hint">まだ検査値が登録されていません。「検査値を追加」から登録してください。</p>`;
+    return;
+  }
+  const items = labFullItems(DATA.labs[latestDate]);
+  const keys = sortItemKeys(Object.keys(items).filter(k=>items[k]!=null && items[k]!==""));
+  const rows = keys.map(k=>{
+    const item = getItemByKey(k);
+    const label = item ? item.labels[0] : k;
+    const unit = item && item.unit ? item.unit : "";
+    const ev = evalItem(k, items[k]);
+    const judgeText = judgeItemText(k, items[k]);
+    const prev = findPrevValueForItem(k, latestDate);
+    let comment = "この項目は今回が初めての記録のため、比較対象がありません。";
+    if (prev && item && ev.status!=="unknown"){
+      const cur = buildTrendEval(k, items[k]);
+      const prv = buildTrendEval(k, prev.value);
+      comment = labTrendComment(cur, prv);
+    } else if (!item){
+      comment = "項目データベース未登録のため比較できません。";
+    }
+    const abnormal = ev.status==="high"||ev.status==="low"||ev.status==="pos";
+    return `<tr${abnormal?' class="flagged"':''}>
+      <td style="text-align:left;">${escapeHtml(label)}</td>
+      <td>${escapeHtml(String(items[k]))}${unit?" "+escapeHtml(unit):""}</td>
+      <td style="text-align:left;">${escapeHtml(judgeText)}</td>
+      <td style="text-align:left;">${escapeHtml(comment)}</td>
+    </tr>`;
+  }).join("");
+  container.innerHTML = `
+    <p class="hint">最新の検査日（${fmtDate(latestDate)}）に記録された全項目の判定です。</p>
+    <div style="overflow-x:auto;"><table><thead><tr><th style="text-align:left;">項目</th><th>値</th><th style="text-align:left;">判定</th><th style="text-align:left;">前回との比較</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="diag-disclaimer">※この判定・コメントは登録された数値と基準値を機械的に比較した参考情報であり、医学的診断ではありません。体調や治療方針については必ず主治医にご相談ください。</div>
+  `;
+}
+
+/* ===================== 検査値の推移表（自動判定・全項目） =====================
+   これまでに記録された全項目を縦に、検査日を横に並べたマトリクス表を作る。
+   左端に基準値を表示し、基準値外の値は赤枠で強調する。あくまで登録された数値と
+   基準値を機械的に比較した参考情報であり、AIによる病態推測は行わない。 */
+function allLabDatesWithData(){
+  return Object.keys(DATA.labs||{}).filter(d=>labHasAnyData(DATA.labs[d])).sort();
+}
+function allRecordedItemKeys(){
+  const set = new Set();
+  Object.values(DATA.labs||{}).forEach(lab=>{
+    const items = labFullItems(lab);
+    Object.keys(items).forEach(k=>{ if (items[k]!=null && items[k]!=="") set.add(k); });
+  });
+  return sortItemKeys(Array.from(set));
+}
+
+function renderLabTrendTable(){
+  const container = document.getElementById("labTrendBody");
+  if (!container) return;
+  const dates = allLabDatesWithData();
+  const keys = allRecordedItemKeys();
+  if (dates.length===0 || keys.length===0){
+    container.innerHTML = `<p class="hint">まだ表示できる検査値がありません。「検査値を追加」から登録してください。</p>`;
+    return;
+  }
+  const header = `<th style="text-align:left;">項目</th><th style="text-align:left;">基準値</th>` + dates.map(d=>`<th>${d.slice(5)}</th>`).join("");
+  let rows = "";
+  let currentCat = null;
+  keys.forEach(k=>{
+    const item = getItemByKey(k);
+    const cat = item ? item.category : "その他（未登録項目）";
+    if (cat !== currentCat){
+      rows += `<tr class="cat-row"><td colspan="${dates.length+2}">${escapeHtml(cat)}</td></tr>`;
+      currentCat = cat;
+    }
+    const label = item ? item.labels[0] : k;
+    const unit = item && item.unit ? item.unit : "";
+    let cells = "";
+    dates.forEach(d=>{
+      const items = labFullItems(DATA.labs[d]);
+      const raw = items[k];
+      if (raw==null || raw===""){ cells += `<td>－</td>`; return; }
+      const ev = evalItem(k, raw);
+      const abnormal = ev.status==="high" || ev.status==="low" || ev.status==="pos";
+      cells += `<td class="${abnormal?'abnormal-cell':''}">${escapeHtml(String(raw))}${unit?" "+escapeHtml(unit):""}</td>`;
+    });
+    rows += `<tr><td style="text-align:left;">${escapeHtml(label)}</td><td style="text-align:left;white-space:nowrap;">${escapeHtml(rangeText(item))}</td>${cells}</tr>`;
+  });
+  container.innerHTML = `
+    <p class="hint">これまでに登録された全項目を、検査日順（古い→新しい、左から右）に一覧表示しています。基準値外の値は赤枠で表示しています。</p>
+    <div style="overflow-x:auto;"><table><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="diag-disclaimer">※基準値は一般的な参考値です。年齢・性別・検査機関により異なる場合があります。医学的診断ではありません。</div>
+  `;
+}
+
+/* ===================== 基準値外があった項目の推移グラフ ===================== */
+function itemHasEverAbnormal(key){
+  return Object.keys(DATA.labs||{}).some(d=>{
+    const items = labFullItems(DATA.labs[d]);
+    if (items[key]==null || items[key]==="") return false;
+    const ev = evalItem(key, items[key]);
+    return ev.status==="high" || ev.status==="low";
+  });
+}
+
+function drawGenericItemChart(container, key){
+  const item = getItemByKey(key);
+  if (!item || item.qualitative) return; // 定性項目（-/±/1+等）は数値グラフの対象外
+  const dates = Object.keys(DATA.labs||{}).filter(d=>{
+    const items = labFullItems(DATA.labs[d]);
+    return items[key]!=null && items[key]!=="" && !isNaN(parseFloat(items[key]));
+  }).sort();
+  if (dates.length===0) return;
+  const vals = dates.map(d=>parseFloat(labFullItems(DATA.labs[d])[key]));
+
+  const wrap = document.createElement("div");
+  wrap.style.marginBottom = "20px";
+  const title = document.createElement("div");
+  title.style.fontWeight = "700"; title.style.fontSize = "13px"; title.style.marginBottom = "4px";
+  title.textContent = `${item.labels[0]}${item.unit?"（"+item.unit+"）":""}　基準値: ${rangeText(item)}`;
+  wrap.appendChild(title);
+
+  const svg = document.createElementNS(SVGNS, "svg");
+  const W = 900, H = 150, padL = 50, padR = 16, padT = 12, padB = 26;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.style.width = "100%"; svg.style.height = "auto"; svg.style.display = "block";
+
+  const dataMax = Math.max(...vals), dataMin = Math.min(...vals);
+  const refMax = item.max!=null ? item.max : dataMax;
+  const refMin = item.min!=null ? item.min : dataMin;
+  const yTop = Math.max(dataMax, refMax) * 1.15 || 1;
+  const yBotCandidate = Math.min(dataMin, refMin);
+  const yBot = yBotCandidate < 0 ? yBotCandidate*1.15 : 0;
+  const yPos = v => padT + (1 - (v-yBot)/((yTop-yBot)||1)) * (H-padT-padB);
+
+  [yBot, (yTop+yBot)/2, yTop].forEach(v=>{
+    const y = yPos(v);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"#eee",'stroke-width':1}));
+    const lbl = svgEl("text", {x:4,y:y+4,'font-size':11,fill:"#555",'font-weight':600}); lbl.textContent = Math.round(v*100)/100; svg.appendChild(lbl);
+  });
+  if (item.max!=null){
+    const y = yPos(item.max);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"var(--danger)",'stroke-width':1.5,'stroke-dasharray':"5,4",opacity:0.7}));
+  }
+  if (item.min!=null){
+    const y = yPos(item.min);
+    svg.appendChild(svgEl("line", {x1:padL,y1:y,x2:W-padR,y2:y,stroke:"var(--danger)",'stroke-width':1.5,'stroke-dasharray':"5,4",opacity:0.7}));
+  }
+  const xf = i => padL + (dates.length<=1? (W-padL-padR)/2 : (i/(dates.length-1)) * (W-padL-padR));
+  const path = vals.map((v,i)=>(i===0?"M":"L") + xf(i).toFixed(1) + "," + yPos(v).toFixed(1)).join(" ");
+  svg.appendChild(svgEl("path",{d:path, fill:"none", stroke:"var(--accent)", 'stroke-width':2}));
+  vals.forEach((v,i)=>{
+    const ev = evalItem(key, v);
+    const abnormal = ev.status==="high"||ev.status==="low";
+    svg.appendChild(svgEl("circle",{cx:xf(i), cy:yPos(v), r:abnormal?4:3, fill: abnormal? "var(--danger)":"var(--accent)"}));
+  });
+  const labelStep = Math.max(1, Math.ceil(dates.length/10));
+  dates.forEach((d,i)=>{
+    if (i===dates.length-1 || i % labelStep === 0){
+      const lbl = svgEl("text", {x:xf(i), y:H-6, 'font-size':10, fill:"#555", 'font-weight':600, 'text-anchor':"middle"});
+      lbl.textContent = d.slice(5);
+      svg.appendChild(lbl);
+    }
+  });
+  wrap.appendChild(svg);
+  container.appendChild(wrap);
+}
+
+function renderLabAbnormalCharts(){
+  const container = document.getElementById("labAbnormalCharts");
+  if (!container) return;
+  container.innerHTML = "";
+  const keys = allRecordedItemKeys().filter(k=>{
+    const item = getItemByKey(k);
+    return item && !item.qualitative && (item.min!=null || item.max!=null) && itemHasEverAbnormal(k);
+  });
+  if (keys.length===0){
+    container.innerHTML = `<p class="hint">これまでに基準値外の記録がある項目はまだありません。</p>`;
+    return;
+  }
+  keys.forEach(k=>drawGenericItemChart(container, k));
+}
+
+function renderDiagnosis(){
+  const el = document.getElementById("diagBody");
+  const latest = getLatestLab();
+  const stage = latest ? getStageForEgfr(latest.egfr) : null;
+  const stageKey = stage ? stage.key : "G3a"; // 検査値未登録時はG3a（本アプリの主対象）を目安に表示
+  const suggested = computeSuggestedNutritionTargets(stageKey);
+  const sw = stdWeightKg();
+
+  let stageBadgeHtml, headline;
+  if (latest && stage){
+    const riskClass = stage.risk === "low" ? "low" : (stage.risk==="mid" ? "mid" : "high");
+    stageBadgeHtml = `<span class="stage-badge ${riskClass}">${stage.label}</span>`;
+    headline = `最新の検査値：${fmtDate(latest.date)}　eGFR ${latest.egfr}`;
+  } else {
+    stageBadgeHtml = `<span class="stage-badge unknown">未登録</span>`;
+    headline = "eGFRがまだ登録されていません。本アプリは主にG3a（eGFR 45〜59）を対象に設計されています。「検査値の履歴」の「＋ 検査値を追加」から実際の数値を登録すると、自動でステージが判定されます。";
+  }
+
+  const descText = CKD_STAGE_DESC[stageKey] || "";
+  const adviceHtml = CKD_ADVICE_COMMON.map(a=>`<li>${escapeHtml(a)}</li>`).join("");
+
+  el.innerHTML = `
+    <div class="diag-title">${stageBadgeHtml}</div>
+    <div class="diag-desc">${escapeHtml(headline)}</div>
+    <div class="diag-desc">${escapeHtml(descText)}</div>
+    <div class="target-suggest">
+      <b>食事療法の目安（${stageKey}・${sw? "標準体重"+sw+"kgとして計算":"体重未設定のため概算"}）</b><br>
+      エネルギー：約${suggested.energy}kcal/日　／　たんぱく質：約${suggested.protein}g/日　／　食塩：${suggested.salt}g未満/日　／　カリウム：${suggested.potassium? suggested.potassium+"mg以下/日" : "制限なし（目安）"}
+      <div class="row" style="margin-top:8px;"><button class="btn-ghost btn-sm" id="applySuggestedTargetBtn">この目安を目標値に反映する</button></div>
+    </div>
+    <ul class="advice-list">${adviceHtml}</ul>
+    <div class="diag-disclaimer">※本アプリで表示される数値・判定は一般的な参考情報であり、医学的診断ではありません。実際の食事療法・治療方針は必ず主治医・管理栄養士の指示に従ってください。</div>
+  `;
+  const applyBtn = document.getElementById("applySuggestedTargetBtn");
+  if (applyBtn) applyBtn.addEventListener("click", ()=>{
+    DATA.targets.energy = suggested.energy;
+    DATA.targets.protein = suggested.protein;
+    DATA.targets.salt = suggested.salt;
+    DATA.targets.potassium = suggested.potassium;
+    saveData();
+    renderProfileTab();
+    toast("目標値に反映しました（プロフィール・薬タブでも確認できます）");
+  });
+
+  updateHeaderSub();
+}
+
+/* ===================== プロフィール・薬 ===================== */
+function renderProfileTab(){
+  const p = DATA.profile;
+  document.getElementById("p_name").value = p.name||"";
+  document.getElementById("p_age").value = p.age??"";
+  document.getElementById("p_gender").value = p.gender||"男性";
+  document.getElementById("p_height").value = p.height??"";
+  document.getElementById("p_weight").value = p.weight??"";
+  document.getElementById("p_history").value = p.history||"";
+  document.getElementById("p_condition").value = p.condition||"";
+
+  const t = DATA.targets;
+  document.getElementById("t_sys").value = t.sys??"";
+  document.getElementById("t_dia").value = t.dia??"";
+  document.getElementById("t_hr").value = t.hr??"";
+  document.getElementById("t_protein").value = t.protein??"";
+  document.getElementById("t_salt").value = t.salt??"";
+  document.getElementById("t_potassium").value = t.potassium??"";
+  document.getElementById("t_energy").value = t.energy??"";
+
+  renderMedList();
+}
+
+function renderMedList(){
+  const el = document.getElementById("medList");
+  if (DATA.meds.length===0){ el.innerHTML = '<div class="empty">薬が登録されていません</div>'; return; }
+  el.innerHTML = DATA.meds.map(m=>`
+    <div class="med-item">
+      <div class="name">${escapeHtml(m.name)}</div>
+      <div class="meta">1錠: ${escapeHtml(m.dose)} ／ 服用: ${escapeHtml(m.perDose)} ／ タイミング: ${escapeHtml(m.timing)}</div>
+      <div class="meta">効果: ${escapeHtml(m.effect)}</div>
+      <div class="rowbtns" style="justify-content:flex-start;margin-top:6px;">
+        <button class="btn-danger btn-sm" onclick="deleteMed('${m.id}')">削除</button>
+      </div>
+    </div>`).join("");
+}
+window.deleteMed = function(id){
+  if (!confirm("この薬を削除しますか？")) return;
+  DATA.meds = DATA.meds.filter(m=>m.id!==id);
+  saveData();
+  renderMedList();
+};
+
+document.getElementById("saveProfileBtn").addEventListener("click", ()=>{
+  DATA.profile = {
+    name: document.getElementById("p_name").value,
+    age: Number(document.getElementById("p_age").value)||null,
+    gender: document.getElementById("p_gender").value,
+    height: Number(document.getElementById("p_height").value)||null,
+    weight: Number(document.getElementById("p_weight").value)||null,
+    history: document.getElementById("p_history").value,
+    condition: document.getElementById("p_condition").value
+  };
+  saveData();
+  updateHeaderSub();
+  toast("プロフィールを保存しました");
+});
+
+document.getElementById("saveTargetBtn").addEventListener("click", ()=>{
+  DATA.targets = {
+    sys: Number(document.getElementById("t_sys").value)||null,
+    dia: Number(document.getElementById("t_dia").value)||null,
+    hr: Number(document.getElementById("t_hr").value)||null,
+    protein: document.getElementById("t_protein").value===""? null : Number(document.getElementById("t_protein").value),
+    salt: document.getElementById("t_salt").value===""? null : Number(document.getElementById("t_salt").value),
+    potassium: document.getElementById("t_potassium").value===""? null : Number(document.getElementById("t_potassium").value),
+    energy: document.getElementById("t_energy").value===""? null : Number(document.getElementById("t_energy").value)
+  };
+  saveData();
+  updateHeaderSub();
+  refreshVitalAverages();
+  toast("目標値を保存しました");
+});
+
+document.getElementById("calcTargetBtn").addEventListener("click", ()=>{
+  const latest = getLatestLab();
+  const stage = latest ? getStageForEgfr(latest.egfr) : null;
+  const stageKey = stage ? stage.key : "G3a";
+  const suggested = computeSuggestedNutritionTargets(stageKey);
+  document.getElementById("t_protein").value = suggested.protein;
+  document.getElementById("t_salt").value = suggested.salt;
+  document.getElementById("t_potassium").value = suggested.potassium??"";
+  document.getElementById("t_energy").value = suggested.energy;
+  toast(`${stageKey}の目安を反映しました（「目標値を保存」を押して確定してください）`);
+});
+
+document.getElementById("addMedBtn").addEventListener("click", ()=>{
+  const name = document.getElementById("m_name").value.trim();
+  if (!name){ toast("薬品名を入力してください"); return; }
+  DATA.meds.push({
+    id: uid(),
+    name,
+    dose: document.getElementById("m_dose").value.trim(),
+    perDose: document.getElementById("m_perdose").value.trim(),
+    effect: document.getElementById("m_effect").value.trim(),
+    timing: document.getElementById("m_timing").value.trim()
+  });
+  saveData();
+  ["m_name","m_dose","m_perdose","m_effect","m_timing"].forEach(id=>document.getElementById(id).value="");
+  renderMedList();
+  toast("薬を追加しました");
+});
+
+/* ===================== データ管理 ===================== */
+function renderDataTab(){
+  const dates = Object.keys(DATA.days).filter(d=>DATA.days[d].entries.length>0);
+  const totalEntries = dates.reduce((s,d)=>s+DATA.days[d].entries.length,0);
+  const labDates = Object.keys(DATA.labs||{}).filter(d=>labHasAnyData(DATA.labs[d]));
+  document.getElementById("dataStats").innerHTML = [
+    ["記録日数", dates.length+" 日"],
+    ["総記録件数", totalEntries+" 件"],
+    ["検査値件数", labDates.length+" 件"],
+    ["登録薬数", DATA.meds.length+" 種"]
+  ].map(([l,v])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+  renderSyncSettings();
+}
+
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function toCsv(rows){
+  return rows.map(r=>r.map(v=>{
+    v = (v==null?"":String(v));
+    if (v.includes(",")||v.includes('"')||v.includes("\n")) v = '"'+v.replace(/"/g,'""')+'"';
+    return v;
+  }).join(",")).join("\r\n");
+}
+
+document.getElementById("exportJsonBtn").addEventListener("click", ()=>{
+  downloadBlob(JSON.stringify(DATA,null,2), "慢性腎臓病管理データ_"+todayStr()+".json", "application/json");
+});
+
+document.getElementById("exportCsvBtn").addEventListener("click", ()=>{
+  const rows = [["日付","時刻","最高血圧","最低血圧","心拍数","体重","メモ","水分cc","運動分","症状フラグ","たんぱく質g(概算)","食塩g(概算)","カリウムmg(概算)","エネルギーkcal(概算)"]];
+  Object.keys(DATA.days).sort().forEach(d=>{
+    DATA.days[d].entries.slice().sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time)).forEach(e=>{
+      const n = e.nutrition || emptyNutrition();
+      rows.push([d,e.time,e.sys,e.dia,e.hr,e.weight,e.note,e.water,e.exercise,e.flag?"1":"0",n.protein,n.salt,n.k,n.energy]);
+    });
+  });
+  downloadBlob("﻿"+toCsv(rows), "慢性腎臓病管理データ_"+todayStr()+".csv", "text/csv");
+});
+
+document.getElementById("exportLabCsvBtn").addEventListener("click", ()=>{
+  // 全項目を横持ちで書き出す（項目ごとに列を作る。記録が無い項目は空欄）
+  const dates = Object.keys(DATA.labs||{}).filter(d=>labHasAnyData(DATA.labs[d])).sort();
+  const keys = allRecordedItemKeys();
+  const header = ["検査日","ステージ（eGFRより）","施設名・メモ"].concat(keys.map(k=>{
+    const item = getItemByKey(k);
+    return item ? item.labels[0]+(item.unit?"("+item.unit+")":"") : k;
+  }));
+  const rows = [header];
+  dates.forEach(d=>{
+    const lab = DATA.labs[d];
+    const items = labFullItems(lab);
+    const stage = lab.egfr!=null ? getStageForEgfr(lab.egfr) : null;
+    const row = [d, stage?stage.key:"", lab.note||""];
+    keys.forEach(k=>row.push(items[k]!=null?items[k]:""));
+    rows.push(row);
+  });
+  downloadBlob("﻿"+toCsv(rows), "検査値データ_"+todayStr()+".csv", "text/csv");
+});
+
+document.getElementById("importFile").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const imported = JSON.parse(reader.result);
+      if (!imported.days) throw new Error("invalid");
+      DATA = imported;
+      if (!DATA.labs) DATA.labs = {};
+      if (!DATA.targets) DATA.targets = Object.assign({}, DEFAULT_TARGETS);
+      saveData();
+      toast("インポートしました");
+      renderAll();
+    } catch(err){
+      alert("読み込みに失敗しました。正しいバックアップJSONファイルを選択してください。");
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+// 血液検査管理アプリの「CKD連携」タブから書き出したJSON
+// （{日付:{egfr,cre,uacr,k,note,facility,items:{項目キー:値}}, ...}}）を取り込む。
+// 同じ日付のデータがあれば、書き出し側に値がある項目だけを上書きする（他の項目は保持）。
+// items（全項目）に対応していない旧形式のJSON（egfr/cre/uacr/k/noteのみ）も引き続き読み込める。
+document.getElementById("importCkdLabFile").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const statusEl = document.getElementById("ckdLabImportStatus");
+    try{
+      const imported = JSON.parse(reader.result);
+      const dates = Object.keys(imported);
+      if (dates.length===0) throw new Error("empty");
+      let totalItems = 0;
+      dates.forEach(d=>{
+        const src = imported[d];
+        const cur = getLab(d);
+        if (src.egfr!=null) cur.egfr = Number(src.egfr);
+        if (src.cre!=null) cur.cre = Number(src.cre);
+        if (src.uacr) cur.uacr = String(src.uacr);
+        if (src.k!=null) cur.k = Number(src.k);
+        if (src.items && typeof src.items === "object"){
+          Object.assign(cur.items, src.items);
+          totalItems += Object.keys(src.items).length;
+        }
+        const facility = src.facility || src.note;
+        if (facility) cur.note = facility;
+      });
+      saveData();
+      renderAll();
+      statusEl.textContent = totalItems
+        ? `${dates.length}件の検査日（合計${totalItems}項目）を取り込みました。`
+        : `${dates.length}件の検査日を取り込みました。`;
+      toast("血液検査データを取り込みました");
+    } catch(err){
+      statusEl.textContent = "読み込みに失敗しました。血液検査管理アプリの「CKD連携」タブから書き出したJSONファイルを選択してください。";
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+document.getElementById("syncSaveBtn").addEventListener("click", ()=>{
+  setSyncConfig({
+    url: document.getElementById("sync_url").value.trim(),
+    token: document.getElementById("sync_token").value.trim(),
+    autoSync: document.getElementById("sync_auto").checked
+  });
+  toast("同期設定を保存しました");
+  syncNow(true);
+});
+document.getElementById("syncNowBtn").addEventListener("click", ()=>{ syncNow(true); });
+
+document.getElementById("bpMigrateCloudBtn").addEventListener("click", async ()=>{
+  const statusEl = document.getElementById("bpMigrateStatus");
+  const cfg = getSyncConfig();
+  if (!cfg.url || !cfg.token){
+    statusEl.textContent = "先に上の「クラウド同期」でURL・合言葉を入力し「設定を保存」してください。";
+    return;
+  }
+  statusEl.textContent = "取り込み中…";
+  const remote = await pullFromCloud(cfg);
+  if (!remote || remote.ok===false || !remote.data){
+    statusEl.textContent = "クラウドからデータを取得できませんでした: " + ((remote&&remote.error)||"データがありません");
+    return;
+  }
+  let bpData;
+  try { bpData = JSON.parse(remote.data); }
+  catch(e){ statusEl.textContent = "データの読み込みに失敗しました。"; return; }
+  const result = mergeBpDataIntoCkd(bpData);
+  if (!result.ok){
+    statusEl.textContent = result.error;
+    return;
+  }
+  statusEl.textContent = `${result.importedDates}日分・${result.importedEntries}件の記録を取り込みました（${result.skippedEntries}件は取り込み済みのためスキップ）。`;
+  if (result.importedEntries>0) toast("血圧管理アプリのデータを取り込みました");
+});
+
+document.getElementById("bpMigrateFile").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById("bpMigrateStatus");
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const bpData = JSON.parse(reader.result);
+      const result = mergeBpDataIntoCkd(bpData);
+      if (!result.ok){
+        statusEl.textContent = result.error;
+        return;
+      }
+      statusEl.textContent = `${result.importedDates}日分・${result.importedEntries}件の記録を取り込みました（${result.skippedEntries}件は取り込み済みのためスキップ）。`;
+      if (result.importedEntries>0) toast("血圧管理アプリのデータを取り込みました");
+    } catch(err){
+      statusEl.textContent = "読み込みに失敗しました。血圧管理アプリの「JSONバックアップ」ファイルを選択してください。";
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  if (!confirm("本当に全データを削除して初期状態に戻しますか？この操作は元に戻せません。")) return;
+  DATA = buildInitialData();
+  saveData();
+  toast("初期化しました");
+  renderAll();
+});
+
+/* ===================== 印刷 ===================== */
+const PRINT_CHECKBOX_IDS = [
+  "pr_today_list","pr_today_meds","pr_today_stats",
+  "pr_diag","pr_lab_history",
+  "pr_chart_bp","pr_chart_hr","pr_chart_trend","pr_chart_egfr","pr_chart_cre_k",
+  "pr_log",
+  "pr_profile","pr_targets","pr_meds_list"
+];
+
+function renderPrintTab(){
+  document.getElementById("pr_todayDateLabel").textContent = fmtDate(currentDate);
+  document.getElementById("pr_chartDateLabel").textContent = fmtDate(chartDate);
+  const fromEl = document.getElementById("pr_log_from");
+  const toEl = document.getElementById("pr_log_to");
+  if (!fromEl.value) fromEl.value = todayStr();
+  if (!toEl.value) toEl.value = todayStr();
+}
+
+document.getElementById("pr_selectAll").addEventListener("click", ()=>{
+  PRINT_CHECKBOX_IDS.forEach(id=>document.getElementById(id).checked = true);
+});
+document.getElementById("pr_selectNone").addEventListener("click", ()=>{
+  PRINT_CHECKBOX_IDS.forEach(id=>document.getElementById(id).checked = false);
+});
+
+function combinedRowToPrintTr(row, dateCell){
+  const dCell = dateCell!=null ? `<td>${dateCell}</td>` : "";
+  if (row.type === "entry"){
+    const e = row.entry;
+    const n = e.nutrition || emptyNutrition();
+    return `<tr>
+      ${dCell}
+      <td>${e.time||""}</td>
+      <td>${e.sys??""}</td>
+      <td>${e.dia??""}</td>
+      <td>${e.hr??""}</td>
+      <td>${e.weight??""}</td>
+      <td style="text-align:left;">${escapeHtml(e.note)}${e.flag?" ★症状あり":""}</td>
+      <td>${e.water??""}</td>
+      <td>${e.exercise??""}</td>
+      <td>${n.protein||""}</td>
+      <td>${n.salt||""}</td>
+      <td>${n.k||""}</td>
+      <td>${n.energy||""}</td>
+    </tr>`;
+  }
+  const m = row.med;
+  return `<tr>
+    ${dCell}
+    <td>${row.me.time||"—"}</td>
+    <td>—</td><td>—</td><td>—</td><td>—</td>
+    <td style="text-align:left;">【服薬】${escapeHtml(m.name)}</td>
+    <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+  </tr>`;
+}
+
+function combinedRowsToTable(day){
+  const rows = getCombinedRows(day);
+  if (rows.length===0) return `<p class="print-empty">記録がありません。</p>`;
+  return `<table>
+    <thead><tr><th>時刻</th><th>上</th><th>下</th><th>脈</th><th>体重</th><th>メモ</th><th>水分</th><th>運動</th><th>蛋白質g</th><th>塩分g</th><th>Kmg</th><th>kcal</th></tr></thead>
+    <tbody>${rows.map(r=>combinedRowToPrintTr(r,null)).join("")}</tbody>
+  </table>`;
+}
+
+function logRangeToTable(from, to){
+  const dates = Object.keys(DATA.days).filter(d=>d>=from && d<=to).sort();
+  const bodyRows = [];
+  dates.forEach(d=>{
+    getCombinedRows(DATA.days[d]).forEach(r=>{ bodyRows.push(combinedRowToPrintTr(r, fmtDate(d))); });
+  });
+  if (bodyRows.length===0) return `<p class="print-empty">指定期間に記録がありません。</p>`;
+  return `<table>
+    <thead><tr><th>日付</th><th>時刻</th><th>上</th><th>下</th><th>脈</th><th>体重</th><th>メモ</th><th>水分</th><th>運動</th><th>蛋白質g</th><th>塩分g</th><th>Kmg</th><th>kcal</th></tr></thead>
+    <tbody>${bodyRows.join("")}</tbody>
+  </table>`;
+}
+
+function diagnosisToPrintHtml(){
+  const latest = getLatestLab();
+  const stage = latest ? getStageForEgfr(latest.egfr) : null;
+  const stageKey = stage ? stage.key : "G3a";
+  const suggested = computeSuggestedNutritionTargets(stageKey);
+  const headline = latest ? `最新の検査値：${fmtDate(latest.date)}　eGFR ${latest.egfr}（${stage?stage.label:""}）` : "eGFR未登録（G3aを目安に表示）";
+  return `<p>${escapeHtml(headline)}</p>
+    <p>${escapeHtml(CKD_STAGE_DESC[stageKey]||"")}</p>
+    <p><b>食事療法の目安：</b>エネルギー約${suggested.energy}kcal/日　／　たんぱく質約${suggested.protein}g/日　／　食塩${suggested.salt}g未満/日　／　カリウム${suggested.potassium? suggested.potassium+"mg以下/日":"制限なし（目安）"}</p>
+    <p style="font-size:10.5px;color:#666;">※一般的な参考情報であり医学的診断ではありません。実際の治療方針は主治医の指示に従ってください。</p>`;
+}
+
+function labHistoryToPrintHtml(){
+  const dates = Object.keys(DATA.labs||{}).filter(d=>labHasAnyData(DATA.labs[d])).sort();
+  if (!dates.length) return `<p class="print-empty">検査値が登録されていません。</p>`;
+  const rows = dates.map(d=>{
+    const lab = DATA.labs[d];
+    const stage = lab.egfr!=null ? getStageForEgfr(lab.egfr) : null;
+    return `<tr><td>${fmtDate(d)}</td><td>${lab.egfr??""}</td><td>${stage?stage.key:""}</td><td>${lab.cre??""}</td><td>${escapeHtml(lab.uacr||"")}</td><td>${lab.k??""}</td><td style="text-align:left;">${escapeHtml(lab.note||"")}</td></tr>`;
+  }).join("");
+  return `<table>
+    <thead><tr><th>検査日</th><th>eGFR</th><th>ステージ</th><th>Cr</th><th>尿蛋白</th><th>K</th><th>メモ</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <p style="font-size:10.5px;color:#666;margin-top:4px;">※上表はeGFR・Cr・尿蛋白・Kの4項目の要約です。全項目の記録は「検査値・診断」タブの推移表をご確認ください。</p>`;
+}
+
+function medsChecklistToTable(day){
+  if (!DATA.meds.length) return `<p class="print-empty">薬が登録されていません。</p>`;
+  const rows = DATA.meds.map(m=>{
+    const me = normalizeMedEntry(day.medsTaken[m.id]);
+    return `<tr>
+      <td style="text-align:left;">${escapeHtml(m.name)}</td>
+      <td>${escapeHtml(m.perDose)}</td>
+      <td style="text-align:left;">${escapeHtml(m.timing)}</td>
+      <td>${me.taken?"服用済み":"未服用"}</td>
+      <td>${me.time||""}</td>
+    </tr>`;
+  }).join("");
+  return `<table>
+    <thead><tr><th>薬品名</th><th>服用数</th><th>タイミング</th><th>状態</th><th>服薬時刻</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function statsToPrintHtml(stats){
+  return `<div class="print-stats">${stats.map(([cls,l,v])=>
+    `<div class="pstat"><b>${escapeHtml(l)}:</b> ${escapeHtml(String(v))}</div>`
+  ).join("")}</div>`;
+}
+
+function svgToPrintBlock(svgId, label){
+  const src = document.getElementById(svgId);
+  const clone = src.cloneNode(true);
+  clone.removeAttribute("width");
+  clone.removeAttribute("height");
+  clone.setAttribute("width","100%");
+  clone.style.width = "100%";
+  clone.style.height = "auto";
+  return `<div class="print-svg-wrap"><div class="cap">${escapeHtml(label)}</div>${clone.outerHTML}</div>`;
+}
+
+function profileToPrintHtml(){
+  const p = DATA.profile;
+  return `<table>
+    <tbody>
+      <tr><th style="text-align:left;width:30%;">氏名</th><td style="text-align:left;">${escapeHtml(p.name||"")}</td></tr>
+      <tr><th style="text-align:left;">年齢・性別</th><td style="text-align:left;">${p.age??"-"}歳 / ${escapeHtml(p.gender||"")}</td></tr>
+      <tr><th style="text-align:left;">身長・目標体重</th><td style="text-align:left;">${p.height??"-"}cm / ${p.weight??"-"}kg</td></tr>
+      <tr><th style="text-align:left;">既往歴</th><td style="text-align:left;">${escapeHtml(p.history||"")}</td></tr>
+      <tr><th style="text-align:left;">現在の病状・メモ</th><td style="text-align:left;">${escapeHtml(p.condition||"")}</td></tr>
+    </tbody>
+  </table>`;
+}
+
+function targetsToPrintHtml(){
+  const t = DATA.targets;
+  return `<table>
+    <thead><tr><th>目標 最高血圧</th><th>目標 最低血圧</th><th>目標 心拍数</th><th>目標 たんぱく質</th><th>目標 食塩</th><th>目標 カリウム</th><th>目標 エネルギー</th></tr></thead>
+    <tbody><tr><td>${t.sys??"-"}</td><td>${t.dia??"-"}</td><td>${t.hr??"-"}</td><td>${t.protein??"-"}g</td><td>${t.salt??"-"}g</td><td>${t.potassium?t.potassium+"mg":"制限なし"}</td><td>${t.energy??"-"}kcal</td></tr></tbody>
+  </table>`;
+}
+
+function medsListToPrintHtml(){
+  if (!DATA.meds.length) return `<p class="print-empty">薬が登録されていません。</p>`;
+  const rows = DATA.meds.map(m=>`<tr>
+    <td style="text-align:left;">${escapeHtml(m.name)}</td>
+    <td>${escapeHtml(m.dose)}</td>
+    <td>${escapeHtml(m.perDose)}</td>
+    <td style="text-align:left;">${escapeHtml(m.effect)}</td>
+    <td style="text-align:left;">${escapeHtml(m.timing)}</td>
+  </tr>`).join("");
+  return `<table>
+    <thead><tr><th>薬品名</th><th>1錠量</th><th>服用数</th><th>効果</th><th>タイミング</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// チェックされた項目から印刷用HTMLを組み立てる。印刷する項目が1つもなければnullを返す。
+function buildPrintDoc(){
+  const sections = [];
+
+  // 今日の記録
+  {
+    const day = getDay(currentDate);
+    const bodyParts = [];
+    if (document.getElementById("pr_today_list").checked){
+      bodyParts.push(`<h3>記録一覧</h3>${combinedRowsToTable(day)}`);
+    }
+    if (document.getElementById("pr_today_meds").checked){
+      bodyParts.push(`<h3>服薬チェック</h3>${medsChecklistToTable(day)}`);
+    }
+    if (document.getElementById("pr_today_stats").checked){
+      bodyParts.push(`<h3>本日の統計</h3>${statsToPrintHtml(computeDayStats(day))}`);
+    }
+    if (bodyParts.length){
+      sections.push({ title: `今日の記録（${fmtDate(currentDate)}）`, body: bodyParts.join("") });
+    }
+  }
+
+  // 検査値・診断
+  {
+    const bodyParts = [];
+    if (document.getElementById("pr_diag").checked) bodyParts.push(diagnosisToPrintHtml());
+    if (document.getElementById("pr_lab_history").checked) bodyParts.push(`<h3>検査値の履歴</h3>${labHistoryToPrintHtml()}`);
+    if (bodyParts.length){
+      sections.push({ title: "検査値・診断結果", body: bodyParts.join("") });
+    }
+  }
+
+  // グラフ
+  {
+    const bodyParts = [];
+    if (document.getElementById("pr_chart_bp").checked) bodyParts.push(svgToPrintBlock("bpChart","血圧（上・下）"));
+    if (document.getElementById("pr_chart_hr").checked) bodyParts.push(svgToPrintBlock("hrChart","心拍数"));
+    if (document.getElementById("pr_chart_trend").checked) bodyParts.push(svgToPrintBlock("trendChart","推移（全期間の日平均）"));
+    if (document.getElementById("pr_chart_egfr").checked) bodyParts.push(svgToPrintBlock("egfrChart","eGFR推移"));
+    if (document.getElementById("pr_chart_cre_k").checked){
+      bodyParts.push(svgToPrintBlock("creChart","血清クレアチニン推移"));
+      bodyParts.push(svgToPrintBlock("kLabChart","血清カリウム推移"));
+    }
+    if (bodyParts.length){
+      sections.push({ title: `グラフ（対象日: ${fmtDate(chartDate)}）`, body: bodyParts.join("") });
+    }
+  }
+
+  // 記録ログ
+  if (document.getElementById("pr_log").checked){
+    const from = document.getElementById("pr_log_from").value || todayStr();
+    const to = document.getElementById("pr_log_to").value || todayStr();
+    sections.push({ title: `記録ログ一覧（${from} 〜 ${to}）`, body: logRangeToTable(from, to) });
+  }
+
+  // プロフィール・薬
+  {
+    const bodyParts = [];
+    if (document.getElementById("pr_profile").checked) bodyParts.push(`<h3>プロフィール</h3>${profileToPrintHtml()}`);
+    if (document.getElementById("pr_targets").checked) bodyParts.push(`<h3>目標値</h3>${targetsToPrintHtml()}`);
+    if (document.getElementById("pr_meds_list").checked) bodyParts.push(`<h3>服薬管理リスト</h3>${medsListToPrintHtml()}`);
+    if (bodyParts.length){
+      sections.push({ title: "プロフィール・薬情報", body: bodyParts.join("") });
+    }
+  }
+
+  if (sections.length===0) return null;
+
+  const header = `<div class="print-header">
+    <h1>慢性腎臓病管理アプリ 印刷レポート</h1>
+    <div class="print-meta">出力日: ${fmtDate(todayStr())}　対象者: ${escapeHtml(DATA.profile.name||"")}</div>
+  </div>`;
+
+  const body = sections.map((s,i)=>
+    `<section class="print-section${i>0?" print-break":""}"><h2>${escapeHtml(s.title)}</h2>${s.body}</section>`
+  ).join("");
+
+  return `<div class="print-doc">${header}${body}</div>`;
+}
+
+document.getElementById("pr_printBtn").addEventListener("click", ()=>{
+  if (document.getElementById("pr_chart_bp").checked ||
+      document.getElementById("pr_chart_hr").checked ||
+      document.getElementById("pr_chart_trend").checked ||
+      document.getElementById("pr_chart_egfr").checked ||
+      document.getElementById("pr_chart_cre_k").checked){
+    renderChartTab(); // 印刷直前にグラフを最新の対象日・表示日数で再描画
+  }
+  const html = buildPrintDoc();
+  if (html===null){ toast("印刷する項目を1つ以上選択してください"); return; }
+  document.getElementById("printArea").innerHTML = html;
+  document.body.classList.add("printing");
+  window.print();
+});
+window.addEventListener("afterprint", ()=>{
+  document.body.classList.remove("printing");
+});
+
+/* ===================== 共通 ===================== */
+function updateHeaderSub(){
+  const p = DATA.profile;
+  const latest = getLatestLab();
+  const stage = latest ? getStageForEgfr(latest.egfr) : null;
+  const stageText = latest ? `　eGFR ${latest.egfr}（${stage?stage.key:"-"}）` : "　eGFR未登録";
+  document.getElementById("headerSub").textContent =
+    `${p.name||""}（${p.age||"-"}歳・${p.gender||""}） 目標血圧: ${DATA.targets.sys}/${DATA.targets.dia} mmHg・脈${DATA.targets.hr}${stageText}`;
+}
+
+function renderAll(){
+  updateHeaderSub();
+  clearForm();
+  renderTodayTab();
+  renderChartTab();
+  renderHistoryTab();
+  renderLabsTab();
+  renderProfileTab();
+  renderDataTab();
+}
+
+// クラウド同期の取り込み直後など、入力中のフォームをクリアしたくない場面で使う再描画
+// （renderAll()とほぼ同じだが clearForm() を呼ばない）
+function refreshAllViews(){
+  updateHeaderSub();
+  renderTodayTab();
+  renderChartTab();
+  renderHistoryTab();
+  renderLabsTab();
+  renderProfileTab();
+  renderDataTab();
+}
+
+/* ===================== 初期化 ===================== */
+loadData();
+renderAll();
+syncNow(false); // 設定されていれば起動時に自動でクラウドと同期する
+window.addEventListener("focus", ()=>{ syncNow(false); });
+document.addEventListener("visibilitychange", ()=>{
+  if (document.visibilityState === "visible") syncNow(false);
+});
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  });
+}
+
+</script>
+</body>
+</html>

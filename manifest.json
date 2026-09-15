@@ -1,7 +1,7 @@
 {
-  "name": "血圧管理アプリ",
-  "short_name": "血圧管理",
-  "start_url": "./血圧管理アプリ_4_3.html",
+  "name": "慢性腎臓病管理アプリ",
+  "short_name": "腎臓病管理",
+  "start_url": "./慢性腎臓病管理アプリ.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f6f8",

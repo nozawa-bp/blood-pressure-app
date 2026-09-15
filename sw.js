@@ -1,10 +1,10 @@
-// 血圧管理アプリ用の簡易サービスワーカー
+// 慢性腎臓病管理アプリ用の簡易サービスワーカー
 // ・自分のファイル(HTML/CSS/JS/アイコン等)はキャッシュして、電波が無くても開けるようにする
 // ・Googleスプレッドシート(Apps Script)への同期通信はキャッシュ対象外（常にネットワークへ）
-const CACHE_NAME = "bp-app-cache-v2";
+const CACHE_NAME = "ckd-app-cache-v1";
 const APP_SHELL = [
   "./",
-  "./血圧管理アプリ_4_3.html",
+  "./慢性腎臓病管理アプリ.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"
