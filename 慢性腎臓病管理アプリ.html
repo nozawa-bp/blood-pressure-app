@@ -910,6 +910,7 @@ function loadData(){
   if (!DATA.days) DATA.days = {};
   if (!DATA.labs) DATA.labs = {};
   if (DATA.everSynced === undefined) DATA.everSynced = false;
+  DATA.appId = "ckd"; // クラウド同期で「本アプリのデータかどうか」を見分けるための印（血圧管理アプリと同じURL・合言葉を共用しているため）
 }
 
 function saveData(){
@@ -994,6 +995,12 @@ async function pullFromCloud(cfgOverride){
 }
 
 // クラウドと同期する。リモートの方が新しければ取り込み、ローカルの方が新しければ送信する。
+// ★このURL・合言葉は血圧管理アプリと共用しているため、クラウド上のデータが本当に
+//   本アプリ(慢性腎臓病管理アプリ, DATA.appId==="ckd")のものである場合に限り、
+//   「リモートでローカルを丸ごと置き換える」処理を行う。血圧管理アプリのデータ
+//   （appIdが無い、または別の値）しかクラウドに無い場合は、絶対にローカルの
+//   検査値・目標値・服薬リスト等を上書きしない（代わりにローカルを送信して
+//   クラウド側を本アプリのデータで塗り替える＝このURLを本アプリ用に確保する）。
 async function syncNow(showToastMsg){
   const cfg = getSyncConfig();
   if (!cfg.url || !cfg.token){
@@ -1010,15 +1017,19 @@ async function syncNow(showToastMsg){
       return;
     }
     const remoteUpdatedAt = (remote && remote.updatedAt) || "";
-    const remoteHasData = !!(remote && remote.data);
+    let remoteParsed = null;
+    if (remote && remote.data){
+      try { remoteParsed = JSON.parse(remote.data); } catch(e){ remoteParsed = null; }
+    }
+    const remoteIsCkd = !!(remoteParsed && remoteParsed.appId === "ckd");
 
-    if (remoteHasData && (!DATA.everSynced || remoteUpdatedAt > (DATA.updatedAt || ""))){
-      DATA = JSON.parse(remote.data);
+    if (remoteIsCkd && (!DATA.everSynced || remoteUpdatedAt > (DATA.updatedAt || ""))){
+      DATA = remoteParsed;
       DATA.everSynced = true;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
       refreshAllViews();
       if (showToastMsg) toast("クラウドの最新データを取り込みました");
-    } else if (!remoteHasData || DATA.updatedAt > remoteUpdatedAt){
+    } else if (!remoteIsCkd || DATA.updatedAt > remoteUpdatedAt){
       DATA.everSynced = true;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
       const pushRes = await pushToCloud();
